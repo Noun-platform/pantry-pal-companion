@@ -1,9 +1,39 @@
+// This file is kept for compatibility with existing imports
+// We're no longer using Supabase or Firebase, but keeping the file to avoid breaking imports
 
-import { createClient } from '@supabase/supabase-js';
-
-// Supabase configuration - replace with your actual project URL and anon key
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project-id.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
-
-// Initialize Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Mock client that does nothing
+export const supabase = {
+  auth: {
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    getSession: async () => ({ data: { session: null } }),
+    signUp: async () => ({ error: null }),
+    signInWithPassword: async () => ({ error: null }),
+    signOut: async () => ({ error: null })
+  },
+  from: () => ({
+    select: () => ({
+      eq: () => ({
+        single: () => ({ data: null, error: null }),
+        limit: () => ({ data: [], error: null }),
+        in: () => ({ data: [], error: null })
+      }),
+      ilike: () => ({
+        limit: () => ({ data: [], error: null })
+      }),
+      limit: () => ({ data: [], error: null }),
+      order: () => ({ data: [], error: null })
+    }),
+    insert: () => ({
+      select: () => ({
+        single: () => ({ data: null, error: null })
+      })
+    }),
+    update: () => ({
+      eq: () => ({ data: null, error: null })
+    }),
+    delete: () => ({
+      eq: () => ({ data: null, error: null }),
+      in: () => ({ data: null, error: null })
+    })
+  })
+};

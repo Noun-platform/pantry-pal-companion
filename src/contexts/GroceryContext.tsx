@@ -1,8 +1,7 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { supabase } from '@/lib/firebase';
-import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
+import { useAuth } from './AuthContext';
 
 // Define the Category type
 export type Category = 'All' | 'Produce' | 'Dairy' | 'Bakery' | 'Meat' | 'Frozen' | 'Pantry' | 'Other';
@@ -42,6 +41,10 @@ interface GroceryContextType {
   loading: boolean;
 }
 
+// Mock storage
+const mockItems: Record<string, GroceryItem[]> = {};
+const mockFriends: Record<string, Friend[]> = {};
+
 // Create the context
 const GroceryContext = createContext<GroceryContextType | undefined>(undefined);
 
@@ -67,7 +70,7 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     ? items
     : items.filter(item => item.category === selectedCategory);
 
-  // Fetch grocery items when user changes
+  // Initialize or fetch data when user changes
   useEffect(() => {
     if (user?.isLoggedIn) {
       fetchGroceryItems();
@@ -78,23 +81,15 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [user]);
 
-  // Fetch grocery items from Supabase
+  // Mock fetch grocery items
   const fetchGroceryItems = async () => {
     if (!user) return;
     
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('grocery_items')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      if (data) {
-        setItems(data);
-      }
+      // Get items from mock storage or initialize
+      const userItems = mockItems[user.id] || [];
+      setItems(userItems);
     } catch (error) {
       console.error('Error fetching grocery items:', error);
       toast.error('Failed to load your grocery items');
@@ -103,34 +98,15 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Fetch friends from Supabase
+  // Mock fetch friends
   const fetchFriends = async () => {
     if (!user) return;
     
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('friends')
-        .select(`
-          id,
-          friend_id,
-          profiles:friend_id (
-            username,
-            avatar_url
-          )
-        `)
-        .eq('user_id', user.id);
-      
-      if (error) throw error;
-      
-      if (data) {
-        const mappedFriends: Friend[] = data.map(friend => ({
-          id: friend.id,
-          username: friend.profiles?.username || 'User',
-          avatarUrl: friend.profiles?.avatar_url || `https://ui-avatars.com/api/?name=User&background=random`
-        }));
-        setFriends(mappedFriends);
-      }
+      // Get friends from mock storage or initialize
+      const userFriends = mockFriends[user.id] || [];
+      setFriends(userFriends);
     } catch (error) {
       console.error('Error fetching friends:', error);
       toast.error('Failed to load your friends');
@@ -139,32 +115,31 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Function to add a new item
+  // Add item
   const addItem = async (name: string, category: Exclude<Category, 'All'>, price: number) => {
     if (!user) return;
     
     try {
       setLoading(true);
-      const newItem = {
+      
+      const newItem: GroceryItem = {
+        id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         name,
         category,
         completed: false,
         price,
+        created_at: new Date().toISOString(),
         user_id: user.id
       };
       
-      const { data, error } = await supabase
-        .from('grocery_items')
-        .insert(newItem)
-        .select()
-        .single();
+      // Update local state
+      const updatedItems = [newItem, ...items];
+      setItems(updatedItems);
       
-      if (error) throw error;
+      // Update mock storage
+      mockItems[user.id] = updatedItems;
       
-      if (data) {
-        setItems(prevItems => [data, ...prevItems]);
-        toast.success(`Added ${name} to your list`);
-      }
+      toast.success(`Added ${name} to your list`);
     } catch (error) {
       console.error('Error adding item:', error);
       toast.error('Failed to add item');
@@ -173,7 +148,7 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Function to toggle an item's completed status
+  // Toggle item
   const toggleItem = async (id: string) => {
     if (!user) return;
     
@@ -181,53 +156,32 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const item = items.find(item => item.id === id);
       if (!item) return;
       
-      // Optimistic update
-      setItems(prevItems =>
-        prevItems.map(item =>
-          item.id === id ? { ...item, completed: !item.completed } : item
-        )
+      // Update local state
+      const updatedItems = items.map(item =>
+        item.id === id ? { ...item, completed: !item.completed } : item
       );
       
-      const { error } = await supabase
-        .from('grocery_items')
-        .update({ completed: !item.completed })
-        .eq('id', id)
-        .eq('user_id', user.id);
+      setItems(updatedItems);
       
-      if (error) {
-        // Revert optimistic update on error
-        setItems(prevItems =>
-          prevItems.map(item =>
-            item.id === id ? { ...item, completed: !item.completed } : item
-          )
-        );
-        throw error;
-      }
+      // Update mock storage
+      mockItems[user.id] = updatedItems;
     } catch (error) {
       console.error('Error toggling item:', error);
       toast.error('Failed to update item');
     }
   };
 
-  // Function to delete an item
+  // Delete item
   const deleteItem = async (id: string) => {
     if (!user) return;
     
     try {
-      // Optimistic update
-      setItems(prevItems => prevItems.filter(item => item.id !== id));
+      // Update local state
+      const updatedItems = items.filter(item => item.id !== id);
+      setItems(updatedItems);
       
-      const { error } = await supabase
-        .from('grocery_items')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
-      
-      if (error) {
-        // Revert optimistic update on error
-        fetchGroceryItems();
-        throw error;
-      }
+      // Update mock storage
+      mockItems[user.id] = updatedItems;
       
       toast.info('Item removed from your list');
     } catch (error) {
@@ -236,29 +190,20 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Function to edit an item
+  // Edit item
   const editItem = async (id: string, name: string, category: Exclude<Category, 'All'>, price: number) => {
     if (!user) return;
     
     try {
-      // Optimistic update
-      setItems(prevItems =>
-        prevItems.map(item =>
-          item.id === id ? { ...item, name, category, price } : item
-        )
+      // Update local state
+      const updatedItems = items.map(item =>
+        item.id === id ? { ...item, name, category, price } : item
       );
       
-      const { error } = await supabase
-        .from('grocery_items')
-        .update({ name, category, price })
-        .eq('id', id)
-        .eq('user_id', user.id);
+      setItems(updatedItems);
       
-      if (error) {
-        // Revert optimistic update on error
-        fetchGroceryItems();
-        throw error;
-      }
+      // Update mock storage
+      mockItems[user.id] = updatedItems;
       
       toast.success(`Updated ${name}`);
     } catch (error) {
@@ -267,31 +212,21 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Function to clear completed items
+  // Clear completed items
   const clearCompletedItems = async () => {
     if (!user) return;
     
     try {
-      const completedItemIds = items
-        .filter(item => item.completed)
-        .map(item => item.id);
+      const completedItems = items.filter(item => item.completed);
       
-      if (completedItemIds.length === 0) return;
+      if (completedItems.length === 0) return;
       
-      // Optimistic update
-      setItems(prevItems => prevItems.filter(item => !item.completed));
+      // Update local state
+      const updatedItems = items.filter(item => !item.completed);
+      setItems(updatedItems);
       
-      const { error } = await supabase
-        .from('grocery_items')
-        .delete()
-        .in('id', completedItemIds)
-        .eq('user_id', user.id);
-      
-      if (error) {
-        // Revert optimistic update on error
-        fetchGroceryItems();
-        throw error;
-      }
+      // Update mock storage
+      mockItems[user.id] = updatedItems;
       
       toast.info('Cleared completed items');
     } catch (error) {
@@ -300,79 +235,40 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Function to add a friend
+  // Add friend
   const addFriend = async (friend: Friend) => {
     if (!user) return;
     
     try {
-      // Search for the user by username
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('id')
-        .ilike('username', friend.username)
-        .limit(1)
-        .single();
-      
-      if (userError && userError.code !== 'PGRST116') { // PGRST116 is the 'not found' error
-        throw userError;
-      }
-      
-      if (!userData) {
-        toast.error(`User ${friend.username} not found`);
-        return;
-      }
-      
       // Check if already friends
-      const { data: existingFriend, error: checkError } = await supabase
-        .from('friends')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('friend_id', userData.id)
-        .limit(1);
+      const isFriend = friends.some(f => f.username.toLowerCase() === friend.username.toLowerCase());
       
-      if (checkError) throw checkError;
-      
-      if (existingFriend && existingFriend.length > 0) {
+      if (isFriend) {
         toast.error('You are already friends with this user');
         return;
       }
       
-      // Add friend
-      const { data, error } = await supabase
-        .from('friends')
-        .insert({
-          user_id: user.id,
-          friend_id: userData.id
-        })
-        .select(`
-          id,
-          friend_id,
-          profiles:friend_id (
-            username,
-            avatar_url
-          )
-        `)
-        .single();
+      // Generate id if not provided
+      const newFriend = {
+        ...friend,
+        id: friend.id || `friend-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+      };
       
-      if (error) throw error;
+      // Update local state
+      const updatedFriends = [...friends, newFriend];
+      setFriends(updatedFriends);
       
-      if (data) {
-        const newFriend: Friend = {
-          id: data.id,
-          username: data.profiles?.username || friend.username,
-          avatarUrl: data.profiles?.avatar_url || friend.avatarUrl
-        };
-        
-        setFriends(prevFriends => [...prevFriends, newFriend]);
-        toast.success(`${newFriend.username} added to your friends list!`);
-      }
+      // Update mock storage
+      mockFriends[user.id] = updatedFriends;
+      
+      toast.success(`${newFriend.username} added to your friends list!`);
     } catch (error) {
       console.error('Error adding friend:', error);
       toast.error('Failed to add friend');
     }
   };
 
-  // Function to remove a friend
+  // Remove friend
   const removeFriend = async (id: string) => {
     if (!user) return;
     
@@ -380,20 +276,12 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const friend = friends.find(f => f.id === id);
       if (!friend) return;
       
-      // Optimistic update
-      setFriends(prevFriends => prevFriends.filter(f => f.id !== id));
+      // Update local state
+      const updatedFriends = friends.filter(f => f.id !== id);
+      setFriends(updatedFriends);
       
-      const { error } = await supabase
-        .from('friends')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
-      
-      if (error) {
-        // Revert optimistic update on error
-        fetchFriends();
-        throw error;
-      }
+      // Update mock storage
+      mockFriends[user.id] = updatedFriends;
       
       toast.info(`${friend.username} removed from your friends list`);
     } catch (error) {

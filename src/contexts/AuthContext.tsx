@@ -1,8 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '@/lib/firebase';
 import { toast } from "sonner";
-import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 export interface User {
   id: string;
@@ -30,103 +28,76 @@ export const useAuth = () => {
   return context;
 };
 
+// Mock storage for user data
+interface StoredUser {
+  email: string;
+  password: string;
+  id: string;
+  username: string;
+  avatarUrl: string;
+}
+
+// Mock user database - this would be in Supabase in a real application
+const userStorage: StoredUser[] = [
+  {
+    email: "demo@example.com",
+    password: "password123",
+    id: "demo-user-1",
+    username: "demouser",
+    avatarUrl: `https://ui-avatars.com/api/?name=demouser&background=random`
+  }
+];
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Set up session listener
+  // Check for stored user on initial load
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setLoading(true);
-        if (session?.user) {
-          const supaUser = session.user;
-          // Get or create the user profile
-          await setupUserProfile(supaUser);
-          
-          const appUser: User = {
-            id: supaUser.id,
-            username: supaUser.email?.split('@')[0] || 'User',
-            avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(supaUser.email?.split('@')[0] || 'User')}&background=random`,
-            isLoggedIn: true,
-            email: supaUser.email
-          };
-          setUser(appUser);
-          localStorage.setItem('groceryUser', JSON.stringify(appUser));
-        } else {
-          setUser(null);
-          localStorage.removeItem('groceryUser');
-        }
-        setLoading(false);
-      }
-    );
-
-    // Initial session check
-    checkSession();
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    const storedUser = localStorage.getItem('groceryUser');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
   }, []);
-
-  const checkSession = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const supaUser = session.user;
-        await setupUserProfile(supaUser);
-        
-        const appUser: User = {
-          id: supaUser.id,
-          username: supaUser.email?.split('@')[0] || 'User',
-          avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(supaUser.email?.split('@')[0] || 'User')}&background=random`,
-          isLoggedIn: true,
-          email: supaUser.email
-        };
-        setUser(appUser);
-        localStorage.setItem('groceryUser', JSON.stringify(appUser));
-      }
-    } catch (error) {
-      console.error('Error checking session:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Setup user profile in database
-  const setupUserProfile = async (supaUser: SupabaseUser) => {
-    try {
-      // Check if user exists in profiles table
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', supaUser.id)
-        .single();
-      
-      // If user doesn't exist, create a new profile
-      if (!existingProfile) {
-        await supabase.from('profiles').insert({
-          id: supaUser.id,
-          username: supaUser.email?.split('@')[0] || 'User',
-          avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(supaUser.email?.split('@')[0] || 'User')}&background=random`,
-          updated_at: new Date().toISOString()
-        });
-      }
-    } catch (error) {
-      console.error('Error setting up user profile:', error);
-    }
-  };
 
   const signUp = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signUp({
+      
+      // Check if user already exists
+      const userExists = userStorage.find(user => user.email === email);
+      if (userExists) {
+        throw new Error("User with this email already exists");
+      }
+      
+      // Create new user
+      const username = email.split('@')[0];
+      const newUser: StoredUser = {
         email,
         password,
-      });
+        id: `user-${Date.now()}`,
+        username,
+        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random`
+      };
       
-      if (error) throw error;
-      toast.success("Account created! Please check your email to confirm your registration.");
+      // Add to mock storage
+      userStorage.push(newUser);
+      
+      // Create user object
+      const appUser: User = {
+        id: newUser.id,
+        username: newUser.username,
+        avatarUrl: newUser.avatarUrl,
+        isLoggedIn: true,
+        email: newUser.email
+      };
+      
+      // Set user state
+      setUser(appUser);
+      localStorage.setItem('groceryUser', JSON.stringify(appUser));
+      
+      toast.success("Account created successfully!");
     } catch (error: any) {
       console.error("Signup error:", error);
       toast.error(error.message || "Signup failed. Please try again.");
@@ -138,12 +109,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
       
-      if (error) throw error;
+      // Find user
+      const foundUser = userStorage.find(user => user.email === email);
+      if (!foundUser) {
+        throw new Error("User not found");
+      }
+      
+      // Check password
+      if (foundUser.password !== password) {
+        throw new Error("Invalid password");
+      }
+      
+      // Create user object
+      const appUser: User = {
+        id: foundUser.id,
+        username: foundUser.username,
+        avatarUrl: foundUser.avatarUrl,
+        isLoggedIn: true,
+        email: foundUser.email
+      };
+      
+      // Set user state
+      setUser(appUser);
+      localStorage.setItem('groceryUser', JSON.stringify(appUser));
+      
       toast.success("Login successful!");
     } catch (error: any) {
       console.error("Login error:", error);
@@ -156,8 +146,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      setUser(null);
+      localStorage.removeItem('groceryUser');
       toast.info("You've been logged out");
     } catch (error: any) {
       console.error("Logout error:", error);
