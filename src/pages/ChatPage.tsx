@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
+import { useGrocery } from '@/contexts/GroceryContext';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -37,6 +38,7 @@ const ChatPage = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { items } = useGrocery();
   
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -48,9 +50,46 @@ const ChatPage = () => {
   const fallbackResponse = (query: string): string => {
     query = query.toLowerCase();
     
+    // Check if the query is about the grocery list
+    if (query.includes('list') || query.includes('grocery') || query.includes('groceries') || query.includes('shopping')) {
+      if (items.length === 0) {
+        return "Your grocery list is currently empty. You can add items from the main page.";
+      }
+      
+      // List all items
+      const itemsList = items.map(item => `${item.name} ($${item.price.toFixed(2)})`).join(', ');
+      return `Your grocery list contains: ${itemsList}. The total price is $${items.reduce((sum, item) => sum + item.price, 0).toFixed(2)}.`;
+    }
+    
+    // Check if the query is about a specific item on the list
+    for (const item of items) {
+      const itemName = item.name.toLowerCase();
+      if (query.includes(itemName)) {
+        // If the item is on their list, provide information about it
+        const nutritionInfo = Object.entries(nutritionDatabase).find(([food]) => 
+          itemName.includes(food) || food.includes(itemName)
+        );
+        
+        if (nutritionInfo) {
+          return `You have ${item.name} on your list for $${item.price.toFixed(2)}. ${nutritionInfo[1]}`;
+        } else {
+          return `You have ${item.name} on your list for $${item.price.toFixed(2)}. I don't have specific nutritional information for this item.`;
+        }
+      }
+    }
+    
     // Check if the query mentions any food in our database
     for (const [food, info] of Object.entries(nutritionDatabase)) {
       if (query.includes(food)) {
+        // Check if the food is on their grocery list
+        const matchingItem = items.find(item => 
+          item.name.toLowerCase().includes(food) || food.includes(item.name.toLowerCase())
+        );
+        
+        if (matchingItem) {
+          return `You have ${matchingItem.name} on your list for $${matchingItem.price.toFixed(2)}. ${info}`;
+        }
+        
         return info;
       }
     }
@@ -184,12 +223,13 @@ const ChatPage = () => {
           <div className="space-y-4">
             {messages.length === 0 ? (
               <div className="text-center text-muted-foreground py-8">
-                <p className="mb-2">Ask me about calories in any food!</p>
+                <p className="mb-2">Ask me about calories in any food or your grocery list!</p>
                 <p className="text-sm">Examples:</p>
                 <ul className="text-sm">
                   <li>"How many calories in an apple?"</li>
                   <li>"Nutritional information for chicken breast"</li>
-                  <li>"Is pizza healthy?"</li>
+                  <li>"What's on my grocery list?"</li>
+                  <li>"Tell me about the items in my list"</li>
                 </ul>
               </div>
             ) : (
@@ -222,7 +262,7 @@ const ChatPage = () => {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about food calories..."
+            placeholder="Ask about food or your grocery list..."
             disabled={isLoading}
             className="flex-1"
           />
