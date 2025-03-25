@@ -23,6 +23,7 @@ const FriendsList: React.FC = () => {
       setSubmitting(true);
       
       await addFriend({
+        id: '', // This will be set by the server
         username: friendUsername,
         avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(friendUsername)}&background=random`,
       });
