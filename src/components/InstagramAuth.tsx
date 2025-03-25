@@ -131,7 +131,7 @@ const InstagramAuth: React.FC = () => {
             >
               {loading ? (
                 <>
-                  <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                   {isLogin ? "Logging in..." : "Creating account..."}
                 </>
               ) : (
@@ -144,7 +144,10 @@ const InstagramAuth: React.FC = () => {
         <div className="text-center">
           <button
             type="button"
-            onClick={() => setIsLogin(!isLogin)}
+            onClick={() => {
+              setIsLogin(!isLogin);
+              form.reset();
+            }}
             className="text-sm text-primary hover:underline"
           >
             {isLogin ? "Need an account? Sign Up" : "Already have an account? Login"}
@@ -152,7 +155,7 @@ const InstagramAuth: React.FC = () => {
         </div>
         
         <p className="text-xs text-center text-muted-foreground">
-          Secure authentication powered by Supabase
+          All user data is stored locally in your browser
         </p>
       </div>
     </motion.div>

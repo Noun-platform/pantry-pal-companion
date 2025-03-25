@@ -94,7 +94,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   };
 
-  // New function to find a user by email
   const findUserByEmail = (email: string): User | undefined => {
     const foundUser = userStorage.find(user => user.email.toLowerCase() === email.toLowerCase());
     if (!foundUser) return undefined;
@@ -128,12 +127,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("User with this email already exists");
       }
       
+      // Generate a unique username from email, checking for duplicates
+      let baseUsername = email.split('@')[0];
+      let username = baseUsername;
+      let count = 1;
+      
+      while (userStorage.some(user => user.username.toLowerCase() === username.toLowerCase())) {
+        username = `${baseUsername}${count}`;
+        count++;
+      }
+      
       // Create new user
-      const username = email.split('@')[0];
       const newUser: StoredUser = {
         email,
         password,
-        id: `user-${Date.now()}`,
+        id: `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         username,
         avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random`
       };
@@ -141,6 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Add to mock storage and update state
       const updatedUserStorage = [...userStorage, newUser];
       setUserStorage(updatedUserStorage);
+      saveUsersToStorage(updatedUserStorage);
       
       // Create user object
       const appUser: User = {
