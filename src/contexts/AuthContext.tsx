@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { toast } from "sonner";
+import { userApi } from '@/services/api';
 
 export interface User {
   id: string;
@@ -169,6 +170,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(trimmedUsername)}&background=random`
       };
       
+      // Mock API call to backend
+      const response = await userApi.signUp(trimmedUsername, trimmedEmail, password);
+      
+      if (!response.success) {
+        throw new Error(response.error || "Failed to register on server");
+      }
+      
       // Add to storage and update state
       const updatedUserStorage = [...userStorage, newUser];
       setUserStorage(updatedUserStorage);
@@ -211,6 +219,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("Invalid password");
       }
       
+      // Mock API call to backend
+      const response = await userApi.signIn(email, password);
+      
+      if (!response.success) {
+        throw new Error(response.error || "Login failed on server");
+      }
+      
       // Create user object
       const appUser: User = {
         id: foundUser.id,
@@ -236,6 +251,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       setLoading(true);
+      
+      // Mock API call to backend
+      const response = await userApi.logout();
+      
+      if (!response.success) {
+        console.warn("Logout failed on server, but proceeding with local logout");
+      }
+      
       setUser(null);
       localStorage.removeItem(CURRENT_USER_KEY);
       toast.info("You've been logged out");

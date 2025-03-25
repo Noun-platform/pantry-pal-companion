@@ -8,6 +8,7 @@ import CategoryFilter from '@/components/CategoryFilter';
 import GroceryList from '@/components/GroceryList';
 import InstagramAuth from '@/components/InstagramAuth';
 import FriendsList from '@/components/FriendsList';
+import ApiLogs from '@/components/ApiLogs';
 import { useAuth } from '@/contexts/AuthContext';
 
 const GroceryApp = () => {
@@ -53,6 +54,9 @@ const GroceryApp = () => {
           </>
         )}
       </motion.div>
+      
+      {/* API Logs component for debugging */}
+      <ApiLogs />
     </div>
   );
 };

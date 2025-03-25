@@ -1,6 +1,8 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
+import { groceryApi, friendsApi } from '@/services/api';
 
 // Define the Category type
 export type Category = 'All' | 'Produce' | 'Dairy' | 'Bakery' | 'Meat' | 'Frozen' | 'Pantry' | 'Other';
@@ -109,11 +111,32 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     try {
       setLoading(true);
-      const userItems = getItemsFromStorage(user.id);
-      setItems(userItems);
+      
+      // Make an API call to the backend for items
+      const response = await groceryApi.getItems(user.id);
+      
+      // If the API call fails, fall back to localStorage
+      if (!response.success) {
+        console.warn("Failed to fetch items from API, falling back to localStorage");
+        const userItems = getItemsFromStorage(user.id);
+        setItems(userItems);
+        return;
+      }
+      
+      // If we got data from the API but it's empty, use localStorage
+      if (!response.data || response.data.length === 0) {
+        const userItems = getItemsFromStorage(user.id);
+        setItems(userItems);
+      } else {
+        setItems(response.data);
+      }
     } catch (error) {
       console.error('Error fetching grocery items:', error);
       toast.error('Failed to load your grocery items');
+      
+      // Fallback to localStorage
+      const userItems = getItemsFromStorage(user.id);
+      setItems(userItems);
     } finally {
       setLoading(false);
     }
@@ -125,11 +148,32 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     try {
       setLoading(true);
-      const userFriends = getFriendsFromStorage(user.id);
-      setFriends(userFriends);
+      
+      // Make an API call to the backend for friends
+      const response = await friendsApi.getFriends(user.id);
+      
+      // If the API call fails, fall back to localStorage
+      if (!response.success) {
+        console.warn("Failed to fetch friends from API, falling back to localStorage");
+        const userFriends = getFriendsFromStorage(user.id);
+        setFriends(userFriends);
+        return;
+      }
+      
+      // If we got data from the API but it's empty, use localStorage
+      if (!response.data || response.data.length === 0) {
+        const userFriends = getFriendsFromStorage(user.id);
+        setFriends(userFriends);
+      } else {
+        setFriends(response.data);
+      }
     } catch (error) {
       console.error('Error fetching friends:', error);
       toast.error('Failed to load your friends');
+      
+      // Fallback to localStorage
+      const userFriends = getFriendsFromStorage(user.id);
+      setFriends(userFriends);
     } finally {
       setLoading(false);
     }
@@ -152,17 +196,24 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         user_id: user.id
       };
       
+      // Make an API call to the backend
+      const response = await groceryApi.addItem(user.id, newItem);
+      
+      if (!response.success) {
+        throw new Error(response.error || "Failed to add item on server");
+      }
+      
       // Update local state
       const updatedItems = [newItem, ...items];
       setItems(updatedItems);
       
-      // Update storage
+      // Update storage (local cache)
       saveItemsToStorage(user.id, updatedItems);
       
       toast.success(`Added ${name} to your list`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding item:', error);
-      toast.error('Failed to add item');
+      toast.error(error.message || 'Failed to add item');
     } finally {
       setLoading(false);
     }
@@ -185,6 +236,16 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       // Update storage
       saveItemsToStorage(user.id, updatedItems);
+      
+      // Make an API call to the backend
+      const response = await groceryApi.updateItem(user.id, id, { 
+        ...item, 
+        completed: !item.completed 
+      });
+      
+      if (!response.success) {
+        console.warn("Failed to update item on server, but updated locally");
+      }
     } catch (error) {
       console.error('Error toggling item:', error);
       toast.error('Failed to update item');
@@ -203,6 +264,13 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Update storage
       saveItemsToStorage(user.id, updatedItems);
       
+      // Make an API call to the backend
+      const response = await groceryApi.deleteItem(user.id, id);
+      
+      if (!response.success) {
+        console.warn("Failed to delete item on server, but deleted locally");
+      }
+      
       toast.info('Item removed from your list');
     } catch (error) {
       console.error('Error deleting item:', error);
@@ -215,15 +283,33 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!user) return;
     
     try {
+      const item = items.find(item => item.id === id);
+      if (!item) return;
+      
+      // Create updated item
+      const updatedItem = { 
+        ...item, 
+        name, 
+        category, 
+        price 
+      };
+      
       // Update local state
       const updatedItems = items.map(item =>
-        item.id === id ? { ...item, name, category, price } : item
+        item.id === id ? updatedItem : item
       );
       
       setItems(updatedItems);
       
       // Update storage
       saveItemsToStorage(user.id, updatedItems);
+      
+      // Make an API call to the backend
+      const response = await groceryApi.updateItem(user.id, id, updatedItem);
+      
+      if (!response.success) {
+        console.warn("Failed to update item on server, but updated locally");
+      }
       
       toast.success(`Updated ${name}`);
     } catch (error) {
@@ -247,6 +333,13 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       // Update storage
       saveItemsToStorage(user.id, updatedItems);
+      
+      // Make API calls to delete each completed item
+      const deletePromises = completedItems.map(item => 
+        groceryApi.deleteItem(user.id, item.id)
+      );
+      
+      await Promise.allSettled(deletePromises);
       
       toast.info('Cleared completed items');
     } catch (error) {
@@ -301,6 +394,13 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         email: foundUser.email // Include email if available
       };
       
+      // Make an API call to the backend
+      const response = await friendsApi.addFriend(user.id, newFriend);
+      
+      if (!response.success) {
+        throw new Error(response.error || "Failed to add friend on server");
+      }
+      
       // Update local state
       const updatedFriends = [...friends, newFriend];
       setFriends(updatedFriends);
@@ -309,9 +409,9 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       saveFriendsToStorage(user.id, updatedFriends);
       
       toast.success(`${newFriend.username} added to your friends list!`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding friend:', error);
-      toast.error('Failed to add friend');
+      toast.error(error.message || 'Failed to add friend');
     }
   };
 
@@ -329,6 +429,13 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       // Update storage
       saveFriendsToStorage(user.id, updatedFriends);
+      
+      // Make an API call to the backend
+      const response = await friendsApi.removeFriend(user.id, id);
+      
+      if (!response.success) {
+        console.warn("Failed to remove friend on server, but removed locally");
+      }
       
       toast.info(`${friend.username} removed from your friends list`);
     } catch (error) {
