@@ -16,6 +16,8 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  findUserByUsername: (username: string) => User | undefined;
+  getAllUsers: () => User[];
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -60,6 +62,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setLoading(false);
   }, []);
+
+  const findUserByUsername = (username: string): User | undefined => {
+    const foundUser = userStorage.find(user => user.username.toLowerCase() === username.toLowerCase());
+    if (!foundUser) return undefined;
+    
+    return {
+      id: foundUser.id,
+      username: foundUser.username,
+      avatarUrl: foundUser.avatarUrl,
+      isLoggedIn: true,
+      email: foundUser.email
+    };
+  };
+
+  const getAllUsers = (): User[] => {
+    return userStorage.map(stored => ({
+      id: stored.id,
+      username: stored.username,
+      avatarUrl: stored.avatarUrl,
+      isLoggedIn: true,
+      email: stored.email
+    }));
+  };
 
   const signUp = async (email: string, password: string) => {
     try {
@@ -158,7 +183,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, signIn, logout }}>
+    <AuthContext.Provider value={{ user, loading, signUp, signIn, logout, findUserByUsername, getAllUsers }}>
       {children}
     </AuthContext.Provider>
   );

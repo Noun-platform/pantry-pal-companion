@@ -1,12 +1,14 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, User, X } from 'lucide-react';
+import { UserPlus, User, X, Search } from 'lucide-react';
 import { Friend, useGrocery } from '@/contexts/GroceryContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from "sonner";
 
 const FriendsList: React.FC = () => {
   const { friends, addFriend, removeFriend, loading } = useGrocery();
+  const { getAllUsers, user: currentUser } = useAuth();
   const [isAdding, setIsAdding] = useState(false);
   const [friendUsername, setFriendUsername] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -23,7 +25,7 @@ const FriendsList: React.FC = () => {
       setSubmitting(true);
       
       await addFriend({
-        id: '', // This will be set by the server
+        id: '', // This will be set by the context
         username: friendUsername,
         avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(friendUsername)}&background=random`,
       });
@@ -41,6 +43,16 @@ const FriendsList: React.FC = () => {
     await removeFriend(id);
   };
 
+  // Get all available users that are not the current user and not already friends
+  const getAvailableUsers = () => {
+    const allUsers = getAllUsers();
+    const availableUsers = allUsers.filter(u => 
+      u.id !== currentUser?.id && 
+      !friends.some(f => f.id === u.id)
+    );
+    return availableUsers;
+  };
+
   if (loading && friends.length === 0) {
     return (
       <div className="mb-6">
@@ -51,6 +63,8 @@ const FriendsList: React.FC = () => {
       </div>
     );
   }
+
+  const availableUsers = getAvailableUsers();
 
   return (
     <div className="mb-6">
@@ -89,14 +103,23 @@ const FriendsList: React.FC = () => {
               </div>
               
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={friendUsername}
-                  onChange={(e) => setFriendUsername(e.target.value)}
-                  className="flex-1 p-2 rounded-lg border border-input bg-background/50 focus:outline-none focus:ring-1 focus:ring-primary"
-                  placeholder="Username"
-                  autoFocus
-                />
+                <div className="relative flex-1">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={friendUsername}
+                    onChange={(e) => setFriendUsername(e.target.value)}
+                    className="w-full pl-9 p-2 rounded-lg border border-input bg-background/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Username"
+                    autoFocus
+                    list="available-users"
+                  />
+                  <datalist id="available-users">
+                    {availableUsers.map(user => (
+                      <option key={user.id} value={user.username} />
+                    ))}
+                  </datalist>
+                </div>
                 <button
                   type="submit"
                   disabled={submitting}
@@ -109,6 +132,12 @@ const FriendsList: React.FC = () => {
                   )}
                 </button>
               </div>
+              
+              {availableUsers.length > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Available users: {availableUsers.map(u => u.username).join(', ')}
+                </div>
+              )}
             </div>
           </motion.form>
         )}

@@ -63,7 +63,7 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [friends, setFriends] = useState<Friend[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<Category>('All');
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, findUserByUsername } = useAuth();
 
   // Compute filtered items based on selected category
   const filteredItems = selectedCategory === 'All'
@@ -248,10 +248,20 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
       
+      // Check if the friend exists in the system
+      const foundUser = findUserByUsername(friend.username);
+      
+      if (!foundUser) {
+        toast.error(`User "${friend.username}" does not exist`);
+        return;
+      }
+      
       // Generate id if not provided
       const newFriend = {
         ...friend,
-        id: friend.id || `friend-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+        id: foundUser.id,
+        username: foundUser.username,
+        avatarUrl: foundUser.avatarUrl
       };
       
       // Update local state
