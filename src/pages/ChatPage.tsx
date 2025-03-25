@@ -17,23 +17,23 @@ interface Message {
   content: string;
 }
 
-// Simple nutrition data for common foods
+// Simple nutrition data for common foods with friendly, conversational responses
 const nutritionDatabase = {
-  'apple': 'An apple contains about 95 calories, is high in fiber, vitamin C, and various antioxidants.',
-  'banana': 'A medium banana contains about 105 calories and is rich in potassium and vitamin B6.',
-  'bread': 'A slice of white bread contains about 80 calories. Whole grain bread has similar calories but more fiber and nutrients.',
-  'rice': 'A cup of cooked white rice contains about 200 calories, while brown rice has slightly fewer calories and more fiber.',
-  'chicken': 'A 3.5oz (100g) serving of chicken breast contains about 165 calories and is high in protein.',
-  'egg': 'One large egg contains about 70 calories, with 6g of protein and various vitamins and minerals.',
-  'milk': 'A cup of whole milk contains about 150 calories, while skim milk has about 80 calories.',
-  'pizza': 'A slice of cheese pizza contains about 250-300 calories, depending on size and toppings.',
-  'pasta': 'One cup of cooked pasta contains about 200 calories, primarily from carbohydrates.',
-  'chocolate': 'A 1.5oz (43g) bar of milk chocolate contains about 235 calories and is high in sugar and fat.',
-  'potato': 'A medium baked potato contains about 160 calories and is a good source of potassium and vitamin C.',
-  'carrot': 'A medium carrot contains about 25 calories and is high in vitamin A.',
-  'orange': 'A medium orange contains about 60 calories and is rich in vitamin C.',
-  'steak': 'A 3.5oz (100g) serving of lean beef steak contains about 180 calories and is high in protein and iron.',
-  'salmon': 'A 3.5oz (100g) serving of salmon contains about 200 calories and is rich in omega-3 fatty acids.'
+  'apple': 'I love apples! They have about 95 calories and are packed with fiber and vitamin C. They make for a perfect snack that keeps you energized throughout the day!',
+  'banana': 'Bananas are amazing! A medium one has around 105 calories and is full of potassium that helps your muscles. They\'re nature\'s perfect on-the-go snack!',
+  'bread': 'Bread is a staple in many homes! A slice of white bread has about 80 calories. If you can, try whole grain bread - it has similar calories but more fiber and nutrients to keep you feeling fuller longer!',
+  'rice': 'Rice is wonderful! A cup of cooked white rice contains about 200 calories. Brown rice has slightly fewer calories and more fiber - both are great options depending on what you\'re cooking!',
+  'chicken': 'Chicken is super versatile! A 3.5oz serving of chicken breast has about 165 calories and is packed with protein. It\'s great for building muscle and keeping you satisfied!',
+  'egg': 'Eggs are nutritional powerhouses! One large egg has just about 70 calories with 6g of high-quality protein. They\'re perfect for breakfast or adding protein to any meal!',
+  'milk': 'Milk is so nourishing! A cup of whole milk has about 150 calories, while skim milk has about 80. Both are excellent sources of calcium for strong bones!',
+  'pizza': 'Pizza can definitely be part of a balanced diet! A slice typically has about 250-300 calories. Enjoy it with a side salad for a more balanced meal!',
+  'pasta': 'Pasta is delicious and satisfying! One cup of cooked pasta contains about 200 calories. Try whole grain varieties for extra fiber and nutrients!',
+  'chocolate': 'A little chocolate is good for the soul! A 1.5oz bar of milk chocolate has about 235 calories. Dark chocolate has less sugar and more antioxidants if you\'re looking for a healthier option!',
+  'potato': 'Potatoes are incredibly versatile! A medium baked potato has about 160 calories and is a great source of potassium and vitamin C. They\'re perfect with healthy toppings!',
+  'carrot': 'Carrots are crunchy and nutritious! A medium carrot has just about 25 calories and tons of vitamin A for healthy eyes. They make a perfect snack!',
+  'orange': 'Oranges are refreshing! A medium orange has about 60 calories and is bursting with vitamin C. They\'re perfect for boosting your immune system!',
+  'steak': 'Steak can be a nutritious choice! A 3.5oz serving of lean beef steak has about 180 calories and is rich in protein and iron. It\'s great for maintaining energy levels!',
+  'salmon': 'Salmon is fantastic for heart health! A 3.5oz serving contains about 200 calories and is loaded with omega-3 fatty acids. It\'s one of the healthiest proteins you can eat!'
 };
 
 const ChatPage = () => {
@@ -60,11 +60,11 @@ const ChatPage = () => {
     // Check if the query is about the grocery list
     if (query.includes('list') || query.includes('grocery') || query.includes('groceries') || query.includes('shopping')) {
       if (items.length === 0) {
-        response = "Your grocery list is currently empty. You can add items from the main page.";
+        response = "It looks like your grocery list is empty at the moment. Feel free to add some items from the main page whenever you're ready!";
       } else {
-        // List all items
+        // List all items with a friendly tone
         const itemsList = items.map(item => `${item.name} ($${item.price.toFixed(2)})`).join(', ');
-        response = `Your grocery list contains: ${itemsList}. The total price is $${items.reduce((sum, item) => sum + item.price, 0).toFixed(2)}.`;
+        response = `I took a peek at your grocery list and found: ${itemsList}. Your current total comes to $${items.reduce((sum, item) => sum + item.price, 0).toFixed(2)}. Is there anything specific you'd like to know about these items?`;
       }
       
       return language === 'np' ? translateToNepali(response) : response;
@@ -80,9 +80,9 @@ const ChatPage = () => {
         );
         
         if (nutritionInfo) {
-          response = `You have ${item.name} on your list for $${item.price.toFixed(2)}. ${nutritionInfo[1]}`;
+          response = `I see you have ${item.name} on your list for $${item.price.toFixed(2)}. ${nutritionInfo[1]} Would you like to know more about planning meals with this ingredient?`;
         } else {
-          response = `You have ${item.name} on your list for $${item.price.toFixed(2)}. I don't have specific nutritional information for this item.`;
+          response = `I noticed you have ${item.name} on your list for $${item.price.toFixed(2)}. While I don't have specific nutritional details for this item, I'd be happy to look up more information if you're curious about it!`;
         }
         
         return language === 'np' ? translateToNepali(response) : response;
@@ -98,33 +98,33 @@ const ChatPage = () => {
         );
         
         if (matchingItem) {
-          response = `You have ${matchingItem.name} on your list for $${matchingItem.price.toFixed(2)}. ${info}`;
+          response = `Great news! You already have ${matchingItem.name} on your list for $${matchingItem.price.toFixed(2)}. ${info}`;
         } else {
-          response = info;
+          response = `${info} Would you like to add this to your grocery list?`;
         }
         
         return language === 'np' ? translateToNepali(response) : response;
       }
     }
     
-    // General responses for common nutritional questions
+    // General responses for common nutritional questions with friendly tone
     if (query.includes('calorie') || query.includes('calories')) {
-      response = 'Calories are a measure of energy in food. Daily calorie needs vary by age, gender, weight, height, and activity level. An average adult needs about 2000-2500 calories per day.';
+      response = 'Calories are basically your body\'s fuel! Most adults need around 2000-2500 calories daily, but it varies based on your age, size, and how active you are. What matters most is getting those calories from nutritious foods that make you feel great!';
     } else if (query.includes('protein')) {
-      response = 'Protein is essential for building muscle and repairing tissues. Good sources include meat, fish, eggs, dairy, legumes, and nuts. Adults typically need 0.8g of protein per kg of body weight daily.';
+      response = 'Protein is amazing for your body! It helps build muscle and keeps you feeling full. You can find it in foods like meat, eggs, beans, and nuts. Most people need about 0.8g per kg of body weight daily. What are your favorite protein-rich foods?';
     } else if (query.includes('carb') || query.includes('carbohydrate')) {
-      response = 'Carbohydrates are your body\'s main energy source. Complex carbs (whole grains, vegetables) are more nutritious than simple carbs (sugar, white bread). They should make up 45-65% of your daily calories.';
+      response = 'Carbs are your body\'s favorite energy source! Complex carbs like whole grains and vegetables give you longer-lasting energy than simple carbs like sugar. They should make up about 45-65% of what you eat. What kind of carbs do you enjoy most?';
     } else if (query.includes('fat')) {
-      response = 'Healthy fats are essential for brain health and hormone production. Sources include avocados, nuts, olive oil, and fatty fish. Fats should make up 20-35% of your daily calories.';
+      response = 'Healthy fats are essential for your brain and hormones! You can find them in foods like avocados, nuts, olive oil, and fish. They should make up about 20-35% of your daily calories. These are the fats that actually keep your body happy and healthy!';
     } else if (query.includes('vitamin')) {
-      response = 'Vitamins are essential nutrients that your body needs in small amounts. They come from a variety of foods, especially fruits and vegetables. Each vitamin has specific roles in maintaining health.';
+      response = 'Vitamins are like little health superheroes in your food! They come mostly from colorful fruits and vegetables. Each vitamin has a special job - like keeping your skin glowing, your eyes sharp, or your immune system strong. What fruits and veggies do you enjoy?';
     } else if (query.includes('mineral')) {
-      response = 'Minerals like calcium, iron, and potassium are essential for various bodily functions. They come from diverse food sources including dairy, meat, fruits, vegetables, and whole grains.';
+      response = 'Minerals are essential nutrients your body needs! Things like calcium for strong bones, iron for healthy blood, and potassium for heart health. You can get them from a variety of foods like dairy, meat, fruits, and whole grains. Is there a specific mineral you\'d like to learn more about?';
     } else if (query.includes('diet') || query.includes('weight loss')) {
-      response = 'Healthy weight loss involves a balanced diet with a moderate calorie deficit, combined with regular physical activity. Focus on nutrient-dense foods rather than severe restrictions.';
+      response = 'The best approach to healthy eating is finding what works for YOU! Focus on adding nutritious foods you enjoy rather than strict rules. Small, consistent changes and staying active tend to work better than drastic diets. What kind of healthy foods do you already enjoy?';
     } else {
       // Default response
-      response = "I don't have specific information about that food item. Generally, a balanced diet should include a variety of fruits, vegetables, whole grains, lean proteins, and healthy fats. If you're looking for specific nutritional information, try asking about common foods like apples, bread, chicken, or rice.";
+      response = "I don't have specific information about that food, but I'd love to help you learn more! Generally, a balanced diet includes lots of colorful fruits and vegetables, whole grains, lean proteins, and healthy fats. Is there a specific food you're curious about? I know quite a bit about common foods like apples, bread, chicken, and rice!";
     }
     
     return language === 'np' ? translateToNepali(response) : response;
