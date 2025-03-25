@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
@@ -40,9 +41,31 @@ interface GroceryContextType {
   loading: boolean;
 }
 
-// Mock storage
-const mockItems: Record<string, GroceryItem[]> = {};
-const mockFriends: Record<string, Friend[]> = {};
+// Get items from localStorage
+const getItemsFromStorage = (userId: string): GroceryItem[] => {
+  const storageKey = `groceryItems_${userId}`;
+  const storedItems = localStorage.getItem(storageKey);
+  return storedItems ? JSON.parse(storedItems) : [];
+};
+
+// Save items to localStorage
+const saveItemsToStorage = (userId: string, items: GroceryItem[]) => {
+  const storageKey = `groceryItems_${userId}`;
+  localStorage.setItem(storageKey, JSON.stringify(items));
+};
+
+// Get friends from localStorage
+const getFriendsFromStorage = (userId: string): Friend[] => {
+  const storageKey = `groceryFriends_${userId}`;
+  const storedFriends = localStorage.getItem(storageKey);
+  return storedFriends ? JSON.parse(storedFriends) : [];
+};
+
+// Save friends to localStorage
+const saveFriendsToStorage = (userId: string, friends: Friend[]) => {
+  const storageKey = `groceryFriends_${userId}`;
+  localStorage.setItem(storageKey, JSON.stringify(friends));
+};
 
 // Create the context
 const GroceryContext = createContext<GroceryContextType | undefined>(undefined);
@@ -62,7 +85,7 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [friends, setFriends] = useState<Friend[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<Category>('All');
   const [loading, setLoading] = useState(true);
-  const { user, findUserByUsername, findUserByEmail } = useAuth();
+  const { user, findUserByUsername, findUserByEmail, getAllUsers } = useAuth();
 
   // Compute filtered items based on selected category
   const filteredItems = selectedCategory === 'All'
@@ -80,14 +103,13 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [user]);
 
-  // Mock fetch grocery items
+  // Fetch grocery items
   const fetchGroceryItems = async () => {
     if (!user) return;
     
     try {
       setLoading(true);
-      // Get items from mock storage or initialize
-      const userItems = mockItems[user.id] || [];
+      const userItems = getItemsFromStorage(user.id);
       setItems(userItems);
     } catch (error) {
       console.error('Error fetching grocery items:', error);
@@ -97,14 +119,13 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Mock fetch friends
+  // Fetch friends
   const fetchFriends = async () => {
     if (!user) return;
     
     try {
       setLoading(true);
-      // Get friends from mock storage or initialize
-      const userFriends = mockFriends[user.id] || [];
+      const userFriends = getFriendsFromStorage(user.id);
       setFriends(userFriends);
     } catch (error) {
       console.error('Error fetching friends:', error);
@@ -135,8 +156,8 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const updatedItems = [newItem, ...items];
       setItems(updatedItems);
       
-      // Update mock storage
-      mockItems[user.id] = updatedItems;
+      // Update storage
+      saveItemsToStorage(user.id, updatedItems);
       
       toast.success(`Added ${name} to your list`);
     } catch (error) {
@@ -162,8 +183,8 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       setItems(updatedItems);
       
-      // Update mock storage
-      mockItems[user.id] = updatedItems;
+      // Update storage
+      saveItemsToStorage(user.id, updatedItems);
     } catch (error) {
       console.error('Error toggling item:', error);
       toast.error('Failed to update item');
@@ -179,8 +200,8 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const updatedItems = items.filter(item => item.id !== id);
       setItems(updatedItems);
       
-      // Update mock storage
-      mockItems[user.id] = updatedItems;
+      // Update storage
+      saveItemsToStorage(user.id, updatedItems);
       
       toast.info('Item removed from your list');
     } catch (error) {
@@ -201,8 +222,8 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       setItems(updatedItems);
       
-      // Update mock storage
-      mockItems[user.id] = updatedItems;
+      // Update storage
+      saveItemsToStorage(user.id, updatedItems);
       
       toast.success(`Updated ${name}`);
     } catch (error) {
@@ -224,8 +245,8 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const updatedItems = items.filter(item => !item.completed);
       setItems(updatedItems);
       
-      // Update mock storage
-      mockItems[user.id] = updatedItems;
+      // Update storage
+      saveItemsToStorage(user.id, updatedItems);
       
       toast.info('Cleared completed items');
     } catch (error) {
@@ -240,7 +261,7 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     try {
       // Check if already friends
-      const isFriend = friends.some(f => f.username.toLowerCase() === friend.username.toLowerCase());
+      const isFriend = friends.some(f => f.id === friend.id);
       
       if (isFriend) {
         toast.error('You are already friends with this user');
@@ -250,14 +271,15 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Make sure the friend exists in the system
       let foundUser = findUserByUsername(friend.username);
       
+      if (!foundUser && friend.email) {
+        // If username lookup fails, try email
+        foundUser = findUserByEmail(friend.email);
+      }
+      
       if (!foundUser && friend.id) {
-        // If username lookup fails, try using the id (in case we're adding by email)
-        foundUser = { 
-          id: friend.id, 
-          username: friend.username, 
-          avatarUrl: friend.avatarUrl, 
-          isLoggedIn: true 
-        };
+        // If all lookups fail but we have an ID, check all users
+        const allUsers = getAllUsers();
+        foundUser = allUsers.find(u => u.id === friend.id);
       }
       
       if (!foundUser) {
@@ -265,9 +287,14 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
       
-      // Generate id if not provided
+      // Don't allow adding yourself
+      if (foundUser.id === user.id) {
+        toast.error("You cannot add yourself as a friend");
+        return;
+      }
+      
+      // Generate friend object with consistent data
       const newFriend = {
-        ...friend,
         id: foundUser.id,
         username: foundUser.username,
         avatarUrl: foundUser.avatarUrl
@@ -277,8 +304,8 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const updatedFriends = [...friends, newFriend];
       setFriends(updatedFriends);
       
-      // Update mock storage
-      mockFriends[user.id] = updatedFriends;
+      // Update storage
+      saveFriendsToStorage(user.id, updatedFriends);
       
       toast.success(`${newFriend.username} added to your friends list!`);
     } catch (error) {
@@ -299,8 +326,8 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const updatedFriends = friends.filter(f => f.id !== id);
       setFriends(updatedFriends);
       
-      // Update mock storage
-      mockFriends[user.id] = updatedFriends;
+      // Update storage
+      saveFriendsToStorage(user.id, updatedFriends);
       
       toast.info(`${friend.username} removed from your friends list`);
     } catch (error) {

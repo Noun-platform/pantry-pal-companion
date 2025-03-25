@@ -43,6 +43,13 @@ const FriendsList: React.FC = () => {
         return;
       }
       
+      // Don't allow adding yourself
+      if (foundUser.id === currentUser?.id) {
+        toast.error("You cannot add yourself as a friend");
+        setSubmitting(false);
+        return;
+      }
+      
       await addFriend({
         id: foundUser.id,
         username: foundUser.username,
@@ -170,9 +177,13 @@ const FriendsList: React.FC = () => {
                 </button>
               </div>
               
-              {availableUsers.length > 0 && (
+              {availableUsers.length > 0 ? (
                 <div className="text-xs text-muted-foreground">
                   Available users: {availableUsers.map(u => searchBy === 'username' ? u.username : u.email).join(', ')}
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground">
+                  No available users to add as friends
                 </div>
               )}
             </div>

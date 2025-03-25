@@ -40,20 +40,32 @@ interface StoredUser {
   avatarUrl: string;
 }
 
-// Mock user database - this would be in Supabase in a real application
-const userStorage: StoredUser[] = [
-  {
-    email: "demo@example.com",
-    password: "password123",
-    id: "demo-user-1",
-    username: "demouser",
-    avatarUrl: `https://ui-avatars.com/api/?name=demouser&background=random`
+// Helper to persist users to localStorage
+const saveUsersToStorage = (users: StoredUser[]) => {
+  localStorage.setItem('groceryAppUsers', JSON.stringify(users));
+};
+
+// Helper to get users from localStorage
+const getUsersFromStorage = (): StoredUser[] => {
+  const storedUsers = localStorage.getItem('groceryAppUsers');
+  if (storedUsers) {
+    return JSON.parse(storedUsers);
   }
-];
+  return [
+    {
+      email: "demo@example.com",
+      password: "password123",
+      id: "demo-user-1",
+      username: "demouser",
+      avatarUrl: `https://ui-avatars.com/api/?name=demouser&background=random`
+    }
+  ];
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userStorage, setUserStorage] = useState<StoredUser[]>(getUsersFromStorage());
 
   // Check for stored user on initial load
   useEffect(() => {
@@ -63,6 +75,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setLoading(false);
   }, []);
+
+  // Update localStorage when userStorage changes
+  useEffect(() => {
+    saveUsersToStorage(userStorage);
+  }, [userStorage]);
 
   const findUserByUsername = (username: string): User | undefined => {
     const foundUser = userStorage.find(user => user.username.toLowerCase() === username.toLowerCase());
@@ -121,8 +138,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random`
       };
       
-      // Add to mock storage
-      userStorage.push(newUser);
+      // Add to mock storage and update state
+      const updatedUserStorage = [...userStorage, newUser];
+      setUserStorage(updatedUserStorage);
       
       // Create user object
       const appUser: User = {
