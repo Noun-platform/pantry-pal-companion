@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, User, X, Search, Mail } from 'lucide-react';
+import { UserPlus, User, X, Search, Mail, Users } from 'lucide-react';
 import { Friend, useGrocery } from '@/contexts/GroceryContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from "sonner";
@@ -12,6 +12,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const FriendsList: React.FC = () => {
   const { friends, addFriend, removeFriend, loading } = useGrocery();
@@ -20,12 +27,43 @@ const FriendsList: React.FC = () => {
   const [searchInput, setSearchInput] = useState('');
   const [searchBy, setSearchBy] = useState<'username' | 'email'>('username');
   const [submitting, setSubmitting] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
 
   const handleAddFriend = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (selectedUserId) {
+      // If a user is selected from the dropdown
+      try {
+        setSubmitting(true);
+        const allUsers = getAllUsers();
+        const foundUser = allUsers.find(u => u.id === selectedUserId);
+        
+        if (!foundUser) {
+          toast.error("User not found");
+          setSubmitting(false);
+          return;
+        }
+        
+        await addFriend({
+          id: foundUser.id,
+          username: foundUser.username,
+          avatarUrl: foundUser.avatarUrl,
+          email: foundUser.email
+        });
+        
+        setSelectedUserId('');
+        setIsAdding(false);
+      } catch (error) {
+        console.error('Error in form submission:', error);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+    
     if (!searchInput.trim()) {
-      toast.error(`Please enter a ${searchBy}`);
+      toast.error(`Please enter a ${searchBy} or select a user from the dropdown`);
       return;
     }
     
@@ -54,6 +92,7 @@ const FriendsList: React.FC = () => {
         id: foundUser.id,
         username: foundUser.username,
         avatarUrl: foundUser.avatarUrl,
+        email: foundUser.email
       });
       
       setSearchInput('');
@@ -72,11 +111,10 @@ const FriendsList: React.FC = () => {
   // Get all available users that are not the current user and not already friends
   const getAvailableUsers = () => {
     const allUsers = getAllUsers();
-    const availableUsers = allUsers.filter(u => 
+    return allUsers.filter(u => 
       u.id !== currentUser?.id && 
       !friends.some(f => f.id === u.id)
     );
-    return availableUsers;
   };
 
   if (loading && friends.length === 0) {
@@ -128,6 +166,53 @@ const FriendsList: React.FC = () => {
                 </button>
               </div>
               
+              {/* New Select User Dropdown */}
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium">
+                  <Users size={16} className="inline mr-2" />
+                  Select User
+                </label>
+                <Select 
+                  value={selectedUserId} 
+                  onValueChange={setSelectedUserId}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a user to add" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableUsers.length > 0 ? (
+                      availableUsers.map(user => (
+                        <SelectItem key={user.id} value={user.id}>
+                          <div className="flex items-center gap-2">
+                            <img 
+                              src={user.avatarUrl} 
+                              alt={user.username} 
+                              className="w-6 h-6 rounded-full"
+                            />
+                            <span>{user.username}</span>
+                            {user.email && (
+                              <span className="text-xs text-muted-foreground">
+                                ({user.email})
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-users" disabled>
+                        No available users to add
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex items-center my-2">
+                <div className="h-px bg-gray-200 flex-1"></div>
+                <span className="px-2 text-xs text-gray-500">OR</span>
+                <div className="h-px bg-gray-200 flex-1"></div>
+              </div>
+              
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <DropdownMenu>
@@ -154,7 +239,6 @@ const FriendsList: React.FC = () => {
                     onChange={(e) => setSearchInput(e.target.value)}
                     className="w-full pl-10 p-2"
                     placeholder={searchBy === 'username' ? "Username" : "Email"}
-                    autoFocus
                     list="available-users"
                   />
                   
@@ -176,16 +260,6 @@ const FriendsList: React.FC = () => {
                   )}
                 </button>
               </div>
-              
-              {availableUsers.length > 0 ? (
-                <div className="text-xs text-muted-foreground">
-                  Available users: {availableUsers.map(u => searchBy === 'username' ? u.username : u.email).join(', ')}
-                </div>
-              ) : (
-                <div className="text-xs text-muted-foreground">
-                  No available users to add as friends
-                </div>
-              )}
             </div>
           </motion.form>
         )}
