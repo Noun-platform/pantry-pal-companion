@@ -11,12 +11,13 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { GroceryProvider } from "./contexts/GroceryContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 
+// Create a client
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <ThemeProvider>
+    <ThemeProvider>
+      <TooltipProvider>
         <Toaster />
         <Sonner />
         <AuthProvider>
@@ -31,8 +32,8 @@ const App = () => (
             </BrowserRouter>
           </GroceryProvider>
         </AuthProvider>
-      </ThemeProvider>
-    </TooltipProvider>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
