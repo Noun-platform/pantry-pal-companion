@@ -1,8 +1,10 @@
 
 import { motion } from 'framer-motion';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, MessageCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { GroceryProvider } from '@/contexts/GroceryContext';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 import AddItemForm from '@/components/AddItemForm';
 import CategoryFilter from '@/components/CategoryFilter';
 import GroceryList from '@/components/GroceryList';
@@ -26,6 +28,13 @@ const GroceryApp = () => {
         </div>
         <h1 className="text-3xl md:text-4xl font-bold mb-1">Grocery List</h1>
         <p className="text-muted-foreground">Keep track of everything you need to buy</p>
+        
+        <Link to="/chat" className="inline-block mt-4">
+          <Button variant="outline" className="gap-2">
+            <MessageCircle size={16} />
+            Ask About Calories
+          </Button>
+        </Link>
       </motion.div>
       
       <motion.div
