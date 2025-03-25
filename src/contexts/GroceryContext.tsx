@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
@@ -17,11 +16,12 @@ export interface GroceryItem {
   user_id: string;
 }
 
-// Define the Friend type
+// Define the Friend type with optional email property
 export interface Friend {
   id: string;
   username: string;
   avatarUrl: string;
+  email?: string; // Add optional email property
 }
 
 // Define the context type
@@ -294,10 +294,11 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
       
       // Generate friend object with consistent data
-      const newFriend = {
+      const newFriend: Friend = {
         id: foundUser.id,
         username: foundUser.username,
-        avatarUrl: foundUser.avatarUrl
+        avatarUrl: foundUser.avatarUrl,
+        email: foundUser.email // Include email if available
       };
       
       // Update local state
