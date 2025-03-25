@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
@@ -63,7 +62,7 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [friends, setFriends] = useState<Friend[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<Category>('All');
   const [loading, setLoading] = useState(true);
-  const { user, findUserByUsername } = useAuth();
+  const { user, findUserByUsername, findUserByEmail } = useAuth();
 
   // Compute filtered items based on selected category
   const filteredItems = selectedCategory === 'All'
@@ -248,8 +247,18 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
       
-      // Check if the friend exists in the system
-      const foundUser = findUserByUsername(friend.username);
+      // Make sure the friend exists in the system
+      let foundUser = findUserByUsername(friend.username);
+      
+      if (!foundUser && friend.id) {
+        // If username lookup fails, try using the id (in case we're adding by email)
+        foundUser = { 
+          id: friend.id, 
+          username: friend.username, 
+          avatarUrl: friend.avatarUrl, 
+          isLoggedIn: true 
+        };
+      }
       
       if (!foundUser) {
         toast.error(`User "${friend.username}" does not exist`);

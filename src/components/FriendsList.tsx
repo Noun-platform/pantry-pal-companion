@@ -1,36 +1,55 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, User, X, Search } from 'lucide-react';
+import { UserPlus, User, X, Search, Mail } from 'lucide-react';
 import { Friend, useGrocery } from '@/contexts/GroceryContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from "sonner";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 
 const FriendsList: React.FC = () => {
   const { friends, addFriend, removeFriend, loading } = useGrocery();
-  const { getAllUsers, user: currentUser } = useAuth();
+  const { getAllUsers, user: currentUser, findUserByEmail, findUserByUsername } = useAuth();
   const [isAdding, setIsAdding] = useState(false);
-  const [friendUsername, setFriendUsername] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchBy, setSearchBy] = useState<'username' | 'email'>('username');
   const [submitting, setSubmitting] = useState(false);
 
   const handleAddFriend = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!friendUsername.trim()) {
-      toast.error("Please enter a username");
+    if (!searchInput.trim()) {
+      toast.error(`Please enter a ${searchBy}`);
       return;
     }
     
     try {
       setSubmitting(true);
       
+      // Find user by email or username based on searchBy
+      const foundUser = searchBy === 'email' 
+        ? findUserByEmail(searchInput)
+        : findUserByUsername(searchInput);
+      
+      if (!foundUser) {
+        toast.error(`User with this ${searchBy} not found`);
+        setSubmitting(false);
+        return;
+      }
+      
       await addFriend({
-        id: '', // This will be set by the context
-        username: friendUsername,
-        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(friendUsername)}&background=random`,
+        id: foundUser.id,
+        username: foundUser.username,
+        avatarUrl: foundUser.avatarUrl,
       });
       
-      setFriendUsername('');
+      setSearchInput('');
       setIsAdding(false);
     } catch (error) {
       console.error('Error in form submission:', error);
@@ -104,19 +123,37 @@ const FriendsList: React.FC = () => {
               
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <input
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground p-1 rounded-md hover:bg-gray-100">
+                        {searchBy === 'username' ? <User size={16} /> : <Mail size={16} />}
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem onClick={() => setSearchBy('username')}>
+                        <User size={16} className="mr-2" />
+                        Search by Username
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSearchBy('email')}>
+                        <Mail size={16} className="mr-2" />
+                        Search by Email
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  
+                  <Input
                     type="text"
-                    value={friendUsername}
-                    onChange={(e) => setFriendUsername(e.target.value)}
-                    className="w-full pl-9 p-2 rounded-lg border border-input bg-background/50 focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="Username"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    className="w-full pl-10 p-2"
+                    placeholder={searchBy === 'username' ? "Username" : "Email"}
                     autoFocus
                     list="available-users"
                   />
+                  
                   <datalist id="available-users">
                     {availableUsers.map(user => (
-                      <option key={user.id} value={user.username} />
+                      <option key={user.id} value={searchBy === 'username' ? user.username : user.email} />
                     ))}
                   </datalist>
                 </div>
@@ -135,7 +172,7 @@ const FriendsList: React.FC = () => {
               
               {availableUsers.length > 0 && (
                 <div className="text-xs text-muted-foreground">
-                  Available users: {availableUsers.map(u => u.username).join(', ')}
+                  Available users: {availableUsers.map(u => searchBy === 'username' ? u.username : u.email).join(', ')}
                 </div>
               )}
             </div>
