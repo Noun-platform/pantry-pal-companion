@@ -1,14 +1,8 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  signInWithPopup, 
-  signOut, 
-  GoogleAuthProvider, 
-  User as FirebaseUser,
-  onAuthStateChanged
-} from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { supabase } from '@/lib/firebase';
 import { toast } from "sonner";
+import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 export interface User {
   id: string;
@@ -21,7 +15,7 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  loginWithGoogle: () => Promise<void>;
+  login: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -36,42 +30,103 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    const savedUser = localStorage.getItem('groceryUser');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Set up session listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setLoading(true);
-      if (firebaseUser) {
-        // Convert Firebase user to our app user
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setLoading(true);
+        if (session?.user) {
+          const supaUser = session.user;
+          // Get or create the user profile
+          await setupUserProfile(supaUser);
+          
+          const appUser: User = {
+            id: supaUser.id,
+            username: supaUser.email?.split('@')[0] || 'User',
+            avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(supaUser.email?.split('@')[0] || 'User')}&background=random`,
+            isLoggedIn: true,
+            email: supaUser.email
+          };
+          setUser(appUser);
+          localStorage.setItem('groceryUser', JSON.stringify(appUser));
+        } else {
+          setUser(null);
+          localStorage.removeItem('groceryUser');
+        }
+        setLoading(false);
+      }
+    );
+
+    // Initial session check
+    checkSession();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const checkSession = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const supaUser = session.user;
+        await setupUserProfile(supaUser);
+        
         const appUser: User = {
-          id: firebaseUser.uid,
-          username: firebaseUser.displayName || 'User',
-          avatarUrl: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(firebaseUser.displayName || 'User')}&background=random`,
+          id: supaUser.id,
+          username: supaUser.email?.split('@')[0] || 'User',
+          avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(supaUser.email?.split('@')[0] || 'User')}&background=random`,
           isLoggedIn: true,
-          email: firebaseUser.email || undefined
+          email: supaUser.email
         };
         setUser(appUser);
         localStorage.setItem('groceryUser', JSON.stringify(appUser));
-      } else {
-        setUser(null);
-        localStorage.removeItem('groceryUser');
       }
+    } catch (error) {
+      console.error('Error checking session:', error);
+    } finally {
       setLoading(false);
-    });
+    }
+  };
 
-    return () => unsubscribe();
-  }, []);
+  // Setup user profile in database
+  const setupUserProfile = async (supaUser: SupabaseUser) => {
+    try {
+      // Check if user exists in profiles table
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', supaUser.id)
+        .single();
+      
+      // If user doesn't exist, create a new profile
+      if (!existingProfile) {
+        await supabase.from('profiles').insert({
+          id: supaUser.id,
+          username: supaUser.email?.split('@')[0] || 'User',
+          avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(supaUser.email?.split('@')[0] || 'User')}&background=random`,
+          updated_at: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      console.error('Error setting up user profile:', error);
+    }
+  };
 
-  const loginWithGoogle = async () => {
+  const login = async () => {
     try {
       setLoading(true);
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      toast.success("Successfully logged in!");
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      
+      if (error) throw error;
     } catch (error) {
       console.error("Login error:", error);
       toast.error("Login failed. Please try again.");
@@ -83,7 +138,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       setLoading(true);
-      await signOut(auth);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
       toast.info("You've been logged out");
     } catch (error) {
       console.error("Logout error:", error);
@@ -94,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

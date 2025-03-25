@@ -6,11 +6,12 @@ import { Friend, useGrocery } from '@/contexts/GroceryContext';
 import { toast } from "sonner";
 
 const FriendsList: React.FC = () => {
-  const { friends, addFriend, removeFriend } = useGrocery();
+  const { friends, addFriend, removeFriend, loading } = useGrocery();
   const [isAdding, setIsAdding] = useState(false);
   const [friendUsername, setFriendUsername] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleAddFriend = (e: React.FormEvent) => {
+  const handleAddFriend = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!friendUsername.trim()) {
@@ -18,28 +19,37 @@ const FriendsList: React.FC = () => {
       return;
     }
     
-    // Check if friend already exists
-    if (friends.some(f => f.username.toLowerCase() === friendUsername.toLowerCase())) {
-      toast.error("This friend is already in your list");
-      return;
+    try {
+      setSubmitting(true);
+      
+      await addFriend({
+        username: friendUsername,
+        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(friendUsername)}&background=random`,
+      });
+      
+      setFriendUsername('');
+      setIsAdding(false);
+    } catch (error) {
+      console.error('Error in form submission:', error);
+    } finally {
+      setSubmitting(false);
     }
-    
-    const newFriend: Friend = {
-      id: crypto.randomUUID(),
-      username: friendUsername,
-      avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(friendUsername)}&background=random`,
-    };
-    
-    addFriend(newFriend);
-    setFriendUsername('');
-    setIsAdding(false);
-    toast.success(`${friendUsername} added to your friends list!`);
   };
 
-  const handleRemoveFriend = (id: string, username: string) => {
-    removeFriend(id);
-    toast.info(`${username} removed from your friends list`);
+  const handleRemoveFriend = async (id: string, username: string) => {
+    await removeFriend(id);
   };
+
+  if (loading && friends.length === 0) {
+    return (
+      <div className="mb-6">
+        <h3 className="text-lg font-medium mb-4">Friends</h3>
+        <div className="glass p-6 rounded-xl flex justify-center">
+          <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-6">
@@ -67,7 +77,7 @@ const FriendsList: React.FC = () => {
           >
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <h4 className="font-medium">Add Instagram Friend</h4>
+                <h4 className="font-medium">Add Friend</h4>
                 <button
                   type="button"
                   onClick={() => setIsAdding(false)}
@@ -83,14 +93,19 @@ const FriendsList: React.FC = () => {
                   value={friendUsername}
                   onChange={(e) => setFriendUsername(e.target.value)}
                   className="flex-1 p-2 rounded-lg border border-input bg-background/50 focus:outline-none focus:ring-1 focus:ring-primary"
-                  placeholder="Instagram username"
+                  placeholder="Username"
                   autoFocus
                 />
                 <button
                   type="submit"
-                  className="bg-primary text-primary-foreground px-3 py-2 rounded-lg hover:bg-primary/90"
+                  disabled={submitting}
+                  className="bg-primary text-primary-foreground px-3 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50"
                 >
-                  Add
+                  {submitting ? (
+                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    'Add'
+                  )}
                 </button>
               </div>
             </div>
@@ -107,7 +122,7 @@ const FriendsList: React.FC = () => {
           <User size={40} className="text-muted-foreground opacity-50" />
           <h3 className="text-lg font-medium">No friends yet</h3>
           <p className="text-muted-foreground">
-            Add friends from Instagram to share your grocery lists
+            Add friends to share your grocery lists
           </p>
         </motion.div>
       ) : (
