@@ -8,6 +8,7 @@ const AddItemForm: React.FC = () => {
   const { addItem } = useGrocery();
   const [itemName, setItemName] = useState('');
   const [category, setCategory] = useState<Exclude<Category, 'All'>>('Other');
+  const [price, setPrice] = useState<string>('');
   const [isExpanded, setIsExpanded] = useState(false);
   
   const categories: Exclude<Category, 'All'>[] = [
@@ -17,9 +18,11 @@ const AddItemForm: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (itemName.trim()) {
-      addItem(itemName, category);
+      const priceValue = parseFloat(price) || 0;
+      addItem(itemName, category, priceValue);
       setItemName('');
       setCategory('Other');
+      setPrice('');
       if (window.innerWidth < 768) {
         setIsExpanded(false);
       }
@@ -66,20 +69,38 @@ const AddItemForm: React.FC = () => {
               />
             </div>
             
-            <div>
-              <label htmlFor="category" className="block text-sm font-medium mb-1">
-                Category
-              </label>
-              <select
-                id="category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value as Exclude<Category, 'All'>)}
-                className="w-full p-3 rounded-lg border border-input bg-background/50 focus:outline-none focus:ring-1 focus:ring-primary"
-              >
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="category" className="block text-sm font-medium mb-1">
+                  Category
+                </label>
+                <select
+                  id="category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value as Exclude<Category, 'All'>)}
+                  className="w-full p-3 rounded-lg border border-input bg-background/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  {categories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label htmlFor="price" className="block text-sm font-medium mb-1">
+                  Price
+                </label>
+                <input
+                  id="price"
+                  type="number"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  className="w-full p-3 rounded-lg border border-input bg-background/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
             </div>
             
             <div className="flex gap-2">

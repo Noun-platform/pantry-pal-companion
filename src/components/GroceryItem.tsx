@@ -24,6 +24,7 @@ const GroceryItem: React.FC<GroceryItemProps> = ({ item }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(item.name);
   const [editedCategory, setEditedCategory] = useState<Exclude<Category, 'All'>>(item.category);
+  const [editedPrice, setEditedPrice] = useState(item.price.toString());
   const inputRef = useRef<HTMLInputElement>(null);
   
   const categories: Exclude<Category, 'All'>[] = [
@@ -40,10 +41,12 @@ const GroceryItem: React.FC<GroceryItemProps> = ({ item }) => {
     setIsEditing(true);
     setEditedName(item.name);
     setEditedCategory(item.category);
+    setEditedPrice(item.price.toString());
   };
 
   const handleSave = () => {
-    editItem(item.id, editedName, editedCategory);
+    const priceValue = parseFloat(editedPrice) || 0;
+    editItem(item.id, editedName, editedCategory, priceValue);
     setIsEditing(false);
   };
 
@@ -51,6 +54,7 @@ const GroceryItem: React.FC<GroceryItemProps> = ({ item }) => {
     setIsEditing(false);
     setEditedName(item.name);
     setEditedCategory(item.category);
+    setEditedPrice(item.price.toString());
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -60,6 +64,12 @@ const GroceryItem: React.FC<GroceryItemProps> = ({ item }) => {
       handleCancel();
     }
   };
+
+  // Format price as currency
+  const formattedPrice = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD'
+  }).format(item.price);
 
   return (
     <motion.li
@@ -97,15 +107,26 @@ const GroceryItem: React.FC<GroceryItemProps> = ({ item }) => {
               <X size={18} />
             </button>
           </div>
-          <select
-            value={editedCategory}
-            onChange={(e) => setEditedCategory(e.target.value as Exclude<Category, 'All'>)}
-            className="bg-background/50 p-2 rounded-md border focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            {categories.map(category => (
-              <option key={category} value={category}>{category}</option>
-            ))}
-          </select>
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              value={editedCategory}
+              onChange={(e) => setEditedCategory(e.target.value as Exclude<Category, 'All'>)}
+              className="bg-background/50 p-2 rounded-md border focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              {categories.map(category => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+            <input
+              type="number"
+              value={editedPrice}
+              onChange={(e) => setEditedPrice(e.target.value)}
+              className="bg-background/50 p-2 rounded-md border focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="Price"
+              step="0.01"
+              min="0"
+            />
+          </div>
         </div>
       ) : (
         <>
@@ -131,12 +152,17 @@ const GroceryItem: React.FC<GroceryItemProps> = ({ item }) => {
               )}>
                 {item.name}
               </span>
-              <span className={cn(
-                "px-2 py-1 text-xs font-medium rounded-full inline-block",
-                categoryColors[item.category]
-              )}>
-                {item.category}
-              </span>
+              <div className="flex flex-wrap gap-2 items-center">
+                <span className={cn(
+                  "px-2 py-1 text-xs font-medium rounded-full inline-block",
+                  categoryColors[item.category]
+                )}>
+                  {item.category}
+                </span>
+                <span className="text-sm font-semibold text-primary">
+                  {formattedPrice}
+                </span>
+              </div>
             </div>
             <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
               <button

@@ -1,143 +1,172 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { toast } from '@/hooks/use-toast';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 
+// Define the Category type
 export type Category = 'All' | 'Produce' | 'Dairy' | 'Bakery' | 'Meat' | 'Frozen' | 'Pantry' | 'Other';
 
+// Define the GroceryItem type with additional price property
 export interface GroceryItem {
   id: string;
   name: string;
-  completed: boolean;
   category: Exclude<Category, 'All'>;
-  createdAt: number;
+  completed: boolean;
+  price: number; // Added price property
+  createdAt: Date;
 }
 
+// Define the Friend type
+export interface Friend {
+  id: string;
+  username: string;
+  avatarUrl: string;
+}
+
+// Define the context type
 interface GroceryContextType {
   items: GroceryItem[];
   filteredItems: GroceryItem[];
   selectedCategory: Category;
-  addItem: (name: string, category: Exclude<Category, 'All'>) => void;
+  friends: Friend[]; // Added friends array
+  addItem: (name: string, category: Exclude<Category, 'All'>, price: number) => void;
   toggleItem: (id: string) => void;
   deleteItem: (id: string) => void;
-  editItem: (id: string, name: string, category: Exclude<Category, 'All'>) => void;
+  editItem: (id: string, name: string, category: Exclude<Category, 'All'>, price: number) => void;
   setSelectedCategory: (category: Category) => void;
   clearCompletedItems: () => void;
+  addFriend: (friend: Friend) => void; // Added addFriend function
+  removeFriend: (id: string) => void; // Added removeFriend function
 }
 
+// Create the context
 const GroceryContext = createContext<GroceryContextType | undefined>(undefined);
 
+// Custom hook to use the grocery context
 export const useGrocery = () => {
   const context = useContext(GroceryContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useGrocery must be used within a GroceryProvider');
   }
   return context;
 };
 
-interface GroceryProviderProps {
-  children: ReactNode;
-}
-
-export const GroceryProvider: React.FC<GroceryProviderProps> = ({ children }) => {
+// GroceryProvider component
+export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Initialize state from localStorage or with default values
   const [items, setItems] = useState<GroceryItem[]>(() => {
     const savedItems = localStorage.getItem('groceryItems');
-    return savedItems ? JSON.parse(savedItems) : [];
+    if (savedItems) {
+      try {
+        // Parse the stored items and ensure createdAt is a Date object
+        return JSON.parse(savedItems).map((item: any) => ({
+          ...item,
+          createdAt: new Date(item.createdAt),
+          price: item.price || 0 // Ensure price exists for backward compatibility
+        }));
+      } catch (error) {
+        console.error('Error parsing stored items:', error);
+        return [];
+      }
+    }
+    return [];
   });
-  
+
+  // Initialize friends from localStorage or with empty array
+  const [friends, setFriends] = useState<Friend[]>(() => {
+    const savedFriends = localStorage.getItem('groceryFriends');
+    if (savedFriends) {
+      try {
+        return JSON.parse(savedFriends);
+      } catch (error) {
+        console.error('Error parsing stored friends:', error);
+        return [];
+      }
+    }
+    return [];
+  });
+
   const [selectedCategory, setSelectedCategory] = useState<Category>('All');
-  
-  const filteredItems = selectedCategory === 'All' 
-    ? items 
+
+  // Compute filtered items based on selected category
+  const filteredItems = selectedCategory === 'All'
+    ? items
     : items.filter(item => item.category === selectedCategory);
 
+  // Save items to localStorage whenever items change
   useEffect(() => {
     localStorage.setItem('groceryItems', JSON.stringify(items));
   }, [items]);
 
-  const addItem = (name: string, category: Exclude<Category, 'All'>) => {
-    if (!name.trim()) return;
-    
+  // Save friends to localStorage whenever friends change
+  useEffect(() => {
+    localStorage.setItem('groceryFriends', JSON.stringify(friends));
+  }, [friends]);
+
+  // Function to add a new item
+  const addItem = (name: string, category: Exclude<Category, 'All'>, price: number) => {
     const newItem: GroceryItem = {
       id: crypto.randomUUID(),
-      name: name.trim(),
-      completed: false,
+      name,
       category,
-      createdAt: Date.now(),
+      completed: false,
+      price, // Add price to new items
+      createdAt: new Date()
     };
-    
-    setItems(prev => [newItem, ...prev]);
-    toast({
-      description: "Item added to your list",
-      duration: 2000,
-    });
+    setItems(prevItems => [newItem, ...prevItems]);
   };
 
+  // Function to toggle an item's completed status
   const toggleItem = (id: string) => {
-    setItems(prev => 
-      prev.map(item => 
-        item.id === id 
-          ? { ...item, completed: !item.completed } 
-          : item
+    setItems(prevItems =>
+      prevItems.map(item =>
+        item.id === id ? { ...item, completed: !item.completed } : item
       )
     );
   };
 
+  // Function to delete an item
   const deleteItem = (id: string) => {
-    setItems(prev => prev.filter(item => item.id !== id));
-    toast({
-      description: "Item removed from your list",
-      duration: 2000,
-    });
+    setItems(prevItems => prevItems.filter(item => item.id !== id));
   };
 
-  const editItem = (id: string, name: string, category: Exclude<Category, 'All'>) => {
-    if (!name.trim()) return;
-    
-    setItems(prev => 
-      prev.map(item => 
-        item.id === id 
-          ? { ...item, name: name.trim(), category } 
-          : item
+  // Function to edit an item
+  const editItem = (id: string, name: string, category: Exclude<Category, 'All'>, price: number) => {
+    setItems(prevItems =>
+      prevItems.map(item =>
+        item.id === id ? { ...item, name, category, price } : item
       )
     );
-    
-    toast({
-      description: "Item updated",
-      duration: 2000,
-    });
   };
 
+  // Function to clear completed items
   const clearCompletedItems = () => {
-    const completedCount = items.filter(item => item.completed).length;
-    
-    if (completedCount === 0) {
-      toast({
-        description: "No completed items to clear",
-        duration: 2000,
-      });
-      return;
-    }
-    
-    setItems(prev => prev.filter(item => !item.completed));
-    
-    toast({
-      description: `Cleared ${completedCount} completed ${completedCount === 1 ? 'item' : 'items'}`,
-      duration: 2000,
-    });
+    setItems(prevItems => prevItems.filter(item => !item.completed));
+  };
+
+  // Function to add a friend
+  const addFriend = (friend: Friend) => {
+    setFriends(prevFriends => [...prevFriends, friend]);
+  };
+
+  // Function to remove a friend
+  const removeFriend = (id: string) => {
+    setFriends(prevFriends => prevFriends.filter(friend => friend.id !== id));
   };
 
   return (
-    <GroceryContext.Provider 
-      value={{ 
-        items, 
+    <GroceryContext.Provider
+      value={{
+        items,
         filteredItems,
         selectedCategory,
-        addItem, 
-        toggleItem, 
-        deleteItem, 
+        friends,
+        addItem,
+        toggleItem,
+        deleteItem,
         editItem,
         setSelectedCategory,
-        clearCompletedItems
+        clearCompletedItems,
+        addFriend,
+        removeFriend
       }}
     >
       {children}

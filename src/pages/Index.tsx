@@ -1,12 +1,43 @@
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ShoppingCart } from 'lucide-react';
 import { GroceryProvider } from '@/contexts/GroceryContext';
 import AddItemForm from '@/components/AddItemForm';
 import CategoryFilter from '@/components/CategoryFilter';
 import GroceryList from '@/components/GroceryList';
+import InstagramAuth from '@/components/InstagramAuth';
+import FriendsList from '@/components/FriendsList';
+
+interface User {
+  id: string;
+  username: string;
+  avatarUrl: string;
+  isLoggedIn: boolean;
+}
 
 const Index = () => {
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('groceryUser');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('groceryUser', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('groceryUser');
+    }
+  }, [user]);
+
+  const handleLogin = (userData: User) => {
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+  };
+
   return (
     <GroceryProvider>
       <div className="min-h-screen max-w-2xl mx-auto px-4 py-8 md:py-12">
@@ -29,6 +60,14 @@ const Index = () => {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="max-w-xl mx-auto"
         >
+          <InstagramAuth 
+            onLogin={handleLogin} 
+            onLogout={handleLogout} 
+            currentUser={user} 
+          />
+          
+          {user?.isLoggedIn && <FriendsList />}
+          
           <AddItemForm />
           <CategoryFilter />
           <GroceryList />
