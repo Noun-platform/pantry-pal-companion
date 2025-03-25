@@ -13,7 +13,7 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (username: string, email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   findUserByUsername: (username: string) => User | undefined;
@@ -40,17 +40,31 @@ interface StoredUser {
   avatarUrl: string;
 }
 
+// App-wide key for localStorage
+const USERS_STORAGE_KEY = 'groceryAppUsers';
+const CURRENT_USER_KEY = 'groceryUser';
+
 // Helper to persist users to localStorage
 const saveUsersToStorage = (users: StoredUser[]) => {
-  localStorage.setItem('groceryAppUsers', JSON.stringify(users));
+  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
 };
 
 // Helper to get users from localStorage
 const getUsersFromStorage = (): StoredUser[] => {
-  const storedUsers = localStorage.getItem('groceryAppUsers');
+  const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
   if (storedUsers) {
-    return JSON.parse(storedUsers);
+    try {
+      return JSON.parse(storedUsers);
+    } catch (e) {
+      console.error('Error parsing stored users:', e);
+      return getDefaultUsers();
+    }
   }
+  return getDefaultUsers();
+};
+
+// Default users for new installs
+const getDefaultUsers = (): StoredUser[] => {
   return [
     {
       email: "demo@example.com",
@@ -65,20 +79,30 @@ const getUsersFromStorage = (): StoredUser[] => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userStorage, setUserStorage] = useState<StoredUser[]>(getUsersFromStorage());
+  const [userStorage, setUserStorage] = useState<StoredUser[]>([]);
 
-  // Check for stored user on initial load
+  // Initialize user storage on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('groceryUser');
+    const storedUsers = getUsersFromStorage();
+    setUserStorage(storedUsers);
+    
+    const storedUser = localStorage.getItem(CURRENT_USER_KEY);
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error('Error parsing stored user:', e);
+        localStorage.removeItem(CURRENT_USER_KEY);
+      }
     }
     setLoading(false);
   }, []);
 
   // Update localStorage when userStorage changes
   useEffect(() => {
-    saveUsersToStorage(userStorage);
+    if (userStorage.length > 0) {
+      saveUsersToStorage(userStorage);
+    }
   }, [userStorage]);
 
   const findUserByUsername = (username: string): User | undefined => {
@@ -112,41 +136,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: stored.id,
       username: stored.username,
       avatarUrl: stored.avatarUrl,
-      isLoggedIn: true,
+      isLoggedIn: false,
       email: stored.email
     }));
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (username: string, email: string, password: string) => {
     try {
       setLoading(true);
       
+      // Trim and sanitize inputs
+      const trimmedUsername = username.trim();
+      const trimmedEmail = email.trim().toLowerCase();
+      
       // Check if user already exists
-      const userExists = userStorage.find(user => user.email === email);
-      if (userExists) {
+      const emailExists = userStorage.some(user => user.email.toLowerCase() === trimmedEmail);
+      if (emailExists) {
         throw new Error("User with this email already exists");
       }
       
-      // Generate a unique username from email, checking for duplicates
-      let baseUsername = email.split('@')[0];
-      let username = baseUsername;
-      let count = 1;
-      
-      while (userStorage.some(user => user.username.toLowerCase() === username.toLowerCase())) {
-        username = `${baseUsername}${count}`;
-        count++;
+      const usernameExists = userStorage.some(user => user.username.toLowerCase() === trimmedUsername.toLowerCase());
+      if (usernameExists) {
+        throw new Error("Username is already taken");
       }
       
       // Create new user
       const newUser: StoredUser = {
-        email,
+        email: trimmedEmail,
         password,
         id: `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        username,
-        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random`
+        username: trimmedUsername,
+        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(trimmedUsername)}&background=random`
       };
       
-      // Add to mock storage and update state
+      // Add to storage and update state
       const updatedUserStorage = [...userStorage, newUser];
       setUserStorage(updatedUserStorage);
       saveUsersToStorage(updatedUserStorage);
@@ -162,7 +185,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Set user state
       setUser(appUser);
-      localStorage.setItem('groceryUser', JSON.stringify(appUser));
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(appUser));
       
       toast.success("Account created successfully!");
     } catch (error: any) {
@@ -177,8 +200,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
-      // Find user
-      const foundUser = userStorage.find(user => user.email === email);
+      // Find user (case insensitive)
+      const foundUser = userStorage.find(user => user.email.toLowerCase() === email.toLowerCase());
       if (!foundUser) {
         throw new Error("User not found");
       }
@@ -199,7 +222,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Set user state
       setUser(appUser);
-      localStorage.setItem('groceryUser', JSON.stringify(appUser));
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(appUser));
       
       toast.success("Login successful!");
     } catch (error: any) {
@@ -214,7 +237,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       setUser(null);
-      localStorage.removeItem('groceryUser');
+      localStorage.removeItem(CURRENT_USER_KEY);
       toast.info("You've been logged out");
     } catch (error: any) {
       console.error("Logout error:", error);

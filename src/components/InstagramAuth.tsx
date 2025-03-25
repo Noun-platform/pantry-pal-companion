@@ -15,11 +15,17 @@ const loginSchema = z.object({
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
 });
 
+const signupSchema = z.object({
+  username: z.string().min(3, { message: "Username must be at least 3 characters" }),
+  email: z.string().email({ message: "Please enter a valid email address" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+});
+
 const InstagramAuth: React.FC = () => {
   const { user, loading, signUp, signIn, logout } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
 
-  const form = useForm<z.infer<typeof loginSchema>>({
+  const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: '',
@@ -27,12 +33,27 @@ const InstagramAuth: React.FC = () => {
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof loginSchema>) => {
-    if (isLogin) {
-      await signIn(values.email, values.password);
-    } else {
-      await signUp(values.email, values.password);
-    }
+  const signupForm = useForm<z.infer<typeof signupSchema>>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      username: '',
+      email: '',
+      password: '',
+    },
+  });
+
+  const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
+    await signIn(values.email, values.password);
+  };
+
+  const onSignupSubmit = async (values: z.infer<typeof signupSchema>) => {
+    await signUp(values.username, values.email, values.password);
+  };
+
+  const switchForm = () => {
+    setIsLogin(!isLogin);
+    loginForm.reset();
+    signupForm.reset();
   };
 
   if (loading) {
@@ -89,65 +110,132 @@ const InstagramAuth: React.FC = () => {
           </h3>
         </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-                      <Input className="pl-10" placeholder="your.email@example.com" {...field} />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-                      <Input className="pl-10" type="password" placeholder="••••••" {...field} />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2"
-            >
-              {loading ? (
-                <>
-                  <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  {isLogin ? "Logging in..." : "Creating account..."}
-                </>
-              ) : (
-                <>{isLogin ? "Login" : "Sign Up"}</>
-              )}
-            </Button>
-          </form>
-        </Form>
+        {isLogin ? (
+          <Form {...loginForm}>
+            <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+              <FormField
+                control={loginForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                        <Input className="pl-10" placeholder="your.email@example.com" {...field} />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={loginForm.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                        <Input className="pl-10" type="password" placeholder="••••••" {...field} />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Logging in...
+                  </>
+                ) : (
+                  <>Login</>
+                )}
+              </Button>
+            </form>
+          </Form>
+        ) : (
+          <Form {...signupForm}>
+            <form onSubmit={signupForm.handleSubmit(onSignupSubmit)} className="space-y-4">
+              <FormField
+                control={signupForm.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                        <Input className="pl-10" placeholder="your_username" {...field} />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={signupForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                        <Input className="pl-10" placeholder="your.email@example.com" {...field} />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={signupForm.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                        <Input className="pl-10" type="password" placeholder="••••••" {...field} />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Creating account...
+                  </>
+                ) : (
+                  <>Sign Up</>
+                )}
+              </Button>
+            </form>
+          </Form>
+        )}
         
         <div className="text-center">
           <button
             type="button"
-            onClick={() => {
-              setIsLogin(!isLogin);
-              form.reset();
-            }}
+            onClick={switchForm}
             className="text-sm text-primary hover:underline"
           >
             {isLogin ? "Need an account? Sign Up" : "Already have an account? Login"}
