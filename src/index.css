@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -78,15 +79,6 @@
     font-feature-settings: "ss01", "ss02", "cv01", "cv02", "cv03";
   }
   
-  /* Creative dark mode background */
-  .dark body {
-    background: linear-gradient(to bottom right, #1A1F2C, #221F26);
-    background-image: 
-      radial-gradient(circle at 25px 25px, rgba(255, 255, 255, 0.03) 2%, transparent 0%), 
-      radial-gradient(circle at 75px 75px, rgba(255, 255, 255, 0.02) 2%, transparent 0%);
-    background-size: 100px 100px;
-  }
-  
   /* Glass morphism styles */
   .glass {
     @apply backdrop-blur-lg bg-white/80 dark:bg-black/40 border border-white/20 shadow-sm;
@@ -94,14 +86,6 @@
   
   .glass-hover:hover {
     @apply backdrop-blur-lg bg-white/90 dark:bg-black/50 border border-white/40 shadow-md transition-all duration-300;
-  }
-  
-  /* Dark mode card styles */
-  .dark .card-gradient {
-    background: linear-gradient(135deg, rgba(40, 44, 52, 0.8) 0%, rgba(30, 33, 42, 0.8) 100%);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
   }
   
   /* List item animations */
