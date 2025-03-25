@@ -301,7 +301,7 @@ export const GroceryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   // Function to add a friend
-  const addFriend = async (friend: Omit<Friend, 'id'>) => {
+  const addFriend = async (friend: Friend) => {
     if (!user) return;
     
     try {

@@ -15,7 +15,8 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: () => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -116,20 +117,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = async () => {
+  const signUp = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
       });
       
       if (error) throw error;
-    } catch (error) {
+      toast.success("Account created! Please check your email to confirm your registration.");
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      toast.error(error.message || "Signup failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) throw error;
+      toast.success("Login successful!");
+    } catch (error: any) {
       console.error("Login error:", error);
-      toast.error("Login failed. Please try again.");
+      toast.error(error.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -141,16 +159,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       toast.info("You've been logged out");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Logout error:", error);
-      toast.error("Logout failed. Please try again.");
+      toast.error(error.message || "Logout failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, signUp, signIn, logout }}>
       {children}
     </AuthContext.Provider>
   );
