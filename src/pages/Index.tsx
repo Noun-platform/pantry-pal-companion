@@ -2,8 +2,6 @@
 import { motion } from 'framer-motion';
 import { ShoppingCart, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { GroceryProvider } from '@/contexts/GroceryContext';
-import { AuthProvider } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import AddItemForm from '@/components/AddItemForm';
 import CategoryFilter from '@/components/CategoryFilter';
@@ -59,14 +57,9 @@ const GroceryApp = () => {
   );
 };
 
+// Index no longer needs to wrap with providers since they're now at the App level
 const Index = () => {
-  return (
-    <AuthProvider>
-      <GroceryProvider>
-        <GroceryApp />
-      </GroceryProvider>
-    </AuthProvider>
-  );
+  return <GroceryApp />;
 };
 
 export default Index;
