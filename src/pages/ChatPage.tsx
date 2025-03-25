@@ -8,6 +8,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { useGrocery } from '@/contexts/GroceryContext';
+import LanguageToggle from '@/components/LanguageToggle';
+import ThemeToggle from '@/components/ThemeToggle';
+import { translations, translateToNepali } from '@/utils/translations';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -37,8 +40,11 @@ const ChatPage = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [language, setLanguage] = useState<'en' | 'np'>('en');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { items } = useGrocery();
+  
+  const t = translations[language];
   
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -49,16 +55,19 @@ const ChatPage = () => {
 
   const fallbackResponse = (query: string): string => {
     query = query.toLowerCase();
+    let response = '';
     
     // Check if the query is about the grocery list
     if (query.includes('list') || query.includes('grocery') || query.includes('groceries') || query.includes('shopping')) {
       if (items.length === 0) {
-        return "Your grocery list is currently empty. You can add items from the main page.";
+        response = "Your grocery list is currently empty. You can add items from the main page.";
+      } else {
+        // List all items
+        const itemsList = items.map(item => `${item.name} ($${item.price.toFixed(2)})`).join(', ');
+        response = `Your grocery list contains: ${itemsList}. The total price is $${items.reduce((sum, item) => sum + item.price, 0).toFixed(2)}.`;
       }
       
-      // List all items
-      const itemsList = items.map(item => `${item.name} ($${item.price.toFixed(2)})`).join(', ');
-      return `Your grocery list contains: ${itemsList}. The total price is $${items.reduce((sum, item) => sum + item.price, 0).toFixed(2)}.`;
+      return language === 'np' ? translateToNepali(response) : response;
     }
     
     // Check if the query is about a specific item on the list
@@ -71,10 +80,12 @@ const ChatPage = () => {
         );
         
         if (nutritionInfo) {
-          return `You have ${item.name} on your list for $${item.price.toFixed(2)}. ${nutritionInfo[1]}`;
+          response = `You have ${item.name} on your list for $${item.price.toFixed(2)}. ${nutritionInfo[1]}`;
         } else {
-          return `You have ${item.name} on your list for $${item.price.toFixed(2)}. I don't have specific nutritional information for this item.`;
+          response = `You have ${item.name} on your list for $${item.price.toFixed(2)}. I don't have specific nutritional information for this item.`;
         }
+        
+        return language === 'np' ? translateToNepali(response) : response;
       }
     }
     
@@ -87,44 +98,36 @@ const ChatPage = () => {
         );
         
         if (matchingItem) {
-          return `You have ${matchingItem.name} on your list for $${matchingItem.price.toFixed(2)}. ${info}`;
+          response = `You have ${matchingItem.name} on your list for $${matchingItem.price.toFixed(2)}. ${info}`;
+        } else {
+          response = info;
         }
         
-        return info;
+        return language === 'np' ? translateToNepali(response) : response;
       }
     }
     
     // General responses for common nutritional questions
     if (query.includes('calorie') || query.includes('calories')) {
-      return 'Calories are a measure of energy in food. Daily calorie needs vary by age, gender, weight, height, and activity level. An average adult needs about 2000-2500 calories per day.';
+      response = 'Calories are a measure of energy in food. Daily calorie needs vary by age, gender, weight, height, and activity level. An average adult needs about 2000-2500 calories per day.';
+    } else if (query.includes('protein')) {
+      response = 'Protein is essential for building muscle and repairing tissues. Good sources include meat, fish, eggs, dairy, legumes, and nuts. Adults typically need 0.8g of protein per kg of body weight daily.';
+    } else if (query.includes('carb') || query.includes('carbohydrate')) {
+      response = 'Carbohydrates are your body\'s main energy source. Complex carbs (whole grains, vegetables) are more nutritious than simple carbs (sugar, white bread). They should make up 45-65% of your daily calories.';
+    } else if (query.includes('fat')) {
+      response = 'Healthy fats are essential for brain health and hormone production. Sources include avocados, nuts, olive oil, and fatty fish. Fats should make up 20-35% of your daily calories.';
+    } else if (query.includes('vitamin')) {
+      response = 'Vitamins are essential nutrients that your body needs in small amounts. They come from a variety of foods, especially fruits and vegetables. Each vitamin has specific roles in maintaining health.';
+    } else if (query.includes('mineral')) {
+      response = 'Minerals like calcium, iron, and potassium are essential for various bodily functions. They come from diverse food sources including dairy, meat, fruits, vegetables, and whole grains.';
+    } else if (query.includes('diet') || query.includes('weight loss')) {
+      response = 'Healthy weight loss involves a balanced diet with a moderate calorie deficit, combined with regular physical activity. Focus on nutrient-dense foods rather than severe restrictions.';
+    } else {
+      // Default response
+      response = "I don't have specific information about that food item. Generally, a balanced diet should include a variety of fruits, vegetables, whole grains, lean proteins, and healthy fats. If you're looking for specific nutritional information, try asking about common foods like apples, bread, chicken, or rice.";
     }
     
-    if (query.includes('protein')) {
-      return 'Protein is essential for building muscle and repairing tissues. Good sources include meat, fish, eggs, dairy, legumes, and nuts. Adults typically need 0.8g of protein per kg of body weight daily.';
-    }
-    
-    if (query.includes('carb') || query.includes('carbohydrate')) {
-      return 'Carbohydrates are your body\'s main energy source. Complex carbs (whole grains, vegetables) are more nutritious than simple carbs (sugar, white bread). They should make up 45-65% of your daily calories.';
-    }
-    
-    if (query.includes('fat')) {
-      return 'Healthy fats are essential for brain health and hormone production. Sources include avocados, nuts, olive oil, and fatty fish. Fats should make up 20-35% of your daily calories.';
-    }
-    
-    if (query.includes('vitamin')) {
-      return 'Vitamins are essential nutrients that your body needs in small amounts. They come from a variety of foods, especially fruits and vegetables. Each vitamin has specific roles in maintaining health.';
-    }
-    
-    if (query.includes('mineral')) {
-      return 'Minerals like calcium, iron, and potassium are essential for various bodily functions. They come from diverse food sources including dairy, meat, fruits, vegetables, and whole grains.';
-    }
-    
-    if (query.includes('diet') || query.includes('weight loss')) {
-      return 'Healthy weight loss involves a balanced diet with a moderate calorie deficit, combined with regular physical activity. Focus on nutrient-dense foods rather than severe restrictions.';
-    }
-    
-    // Default response
-    return "I don't have specific information about that food item. Generally, a balanced diet should include a variety of fruits, vegetables, whole grains, lean proteins, and healthy fats. If you're looking for specific nutritional information, try asking about common foods like apples, bread, chicken, or rice.";
+    return language === 'np' ? translateToNepali(response) : response;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -150,7 +153,9 @@ const ChatPage = () => {
           messages: [
             {
               role: 'system',
-              content: 'You are a nutrition expert assistant. Provide information about calories and nutritional content of food items. Be concise and helpful.'
+              content: language === 'en' 
+                ? 'You are a nutrition expert assistant. Provide information about calories and nutritional content of food items. Be concise and helpful.'
+                : 'तपाईं एक पोषण विशेषज्ञ सहायक हुनुहुन्छ। खाना वस्तुहरूको क्यालोरी र पौष्टिक सामग्रीको बारेमा जानकारी प्रदान गर्नुहोस्। संक्षिप्त र सहयोगी हुनुहोस्।'
             },
             ...messages.map(msg => ({
               role: msg.role,
@@ -192,7 +197,9 @@ const ChatPage = () => {
       
       // Only show toast for unexpected errors, not for our controlled fallback
       if (error instanceof Error && error.message !== 'Insufficient Balance') {
-        toast.error('Using local nutrition database. API connection failed.');
+        toast.error(language === 'en' 
+          ? 'Using local nutrition database. API connection failed.' 
+          : 'स्थानीय पोषण डाटाबेस प्रयोग गर्दै। API जडान असफल भयो।');
       }
     } finally {
       setIsLoading(false);
@@ -205,12 +212,18 @@ const ChatPage = () => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="flex items-center mb-6"
+        className="flex items-center justify-between mb-6"
       >
-        <Link to="/" className="mr-4">
-          <ArrowLeft size={24} />
-        </Link>
-        <h1 className="text-2xl font-bold">Nutrition Assistant</h1>
+        <div className="flex items-center">
+          <Link to="/" className="mr-4">
+            <ArrowLeft size={24} />
+          </Link>
+          <h1 className="text-2xl font-bold">{t.title}</h1>
+        </div>
+        <div className="flex gap-2">
+          <LanguageToggle language={language} setLanguage={setLanguage} />
+          <ThemeToggle />
+        </div>
       </motion.div>
       
       <motion.div
@@ -223,13 +236,13 @@ const ChatPage = () => {
           <div className="space-y-4">
             {messages.length === 0 ? (
               <div className="text-center text-muted-foreground py-8">
-                <p className="mb-2">Ask me about calories in any food or your grocery list!</p>
-                <p className="text-sm">Examples:</p>
+                <p className="mb-2">{t.emptyChat}</p>
+                <p className="text-sm">{t.examples}</p>
                 <ul className="text-sm">
-                  <li>"How many calories in an apple?"</li>
-                  <li>"Nutritional information for chicken breast"</li>
-                  <li>"What's on my grocery list?"</li>
-                  <li>"Tell me about the items in my list"</li>
+                  <li>{t.example1}</li>
+                  <li>{t.example2}</li>
+                  <li>{t.example3}</li>
+                  <li>{t.example4}</li>
                 </ul>
               </div>
             ) : (
@@ -243,7 +256,7 @@ const ChatPage = () => {
                   }`}
                 >
                   <p className="text-sm font-semibold mb-1">
-                    {message.role === 'user' ? 'You' : 'Nutrition Assistant'}
+                    {message.role === 'user' ? t.you : t.assistant}
                   </p>
                   <p className="whitespace-pre-wrap">{message.content}</p>
                 </div>
@@ -251,8 +264,8 @@ const ChatPage = () => {
             )}
             {isLoading && (
               <div className="p-3 rounded-lg bg-muted mr-8">
-                <p className="text-sm font-semibold mb-1">Nutrition Assistant</p>
-                <p className="animate-pulse">Thinking...</p>
+                <p className="text-sm font-semibold mb-1">{t.assistant}</p>
+                <p className="animate-pulse">{t.thinking}</p>
               </div>
             )}
           </div>
@@ -262,7 +275,7 @@ const ChatPage = () => {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about food or your grocery list..."
+            placeholder={t.placeholder}
             disabled={isLoading}
             className="flex-1"
           />
@@ -273,7 +286,7 @@ const ChatPage = () => {
       </motion.div>
       
       <p className="text-center text-xs text-muted-foreground mt-4">
-        Nutrition Assistant
+        {t.footer}
       </p>
     </div>
   );

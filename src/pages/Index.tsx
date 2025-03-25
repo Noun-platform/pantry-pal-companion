@@ -10,6 +10,7 @@ import InstagramAuth from '@/components/InstagramAuth';
 import FriendsList from '@/components/FriendsList';
 import ApiLogs from '@/components/ApiLogs';
 import { useAuth } from '@/contexts/AuthContext';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const GroceryApp = () => {
   const { user } = useAuth();
@@ -22,6 +23,10 @@ const GroceryApp = () => {
         transition={{ duration: 0.5 }}
         className="text-center mb-10"
       >
+        <div className="flex justify-end mb-4">
+          <ThemeToggle />
+        </div>
+        
         <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 mb-4">
           <ShoppingCart size={28} className="text-primary" />
         </div>

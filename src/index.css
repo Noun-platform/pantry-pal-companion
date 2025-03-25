@@ -36,6 +36,36 @@
     --radius: 0.75rem;
   }
 
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 220 70% 50%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+  }
+
   * {
     @apply border-border;
   }
@@ -51,11 +81,11 @@
   
   /* Glass morphism styles */
   .glass {
-    @apply backdrop-blur-lg bg-white/80 border border-white/20 shadow-sm;
+    @apply backdrop-blur-lg bg-white/80 dark:bg-black/40 border border-white/20 shadow-sm;
   }
   
   .glass-hover:hover {
-    @apply backdrop-blur-lg bg-white/90 border border-white/40 shadow-md transition-all duration-300;
+    @apply backdrop-blur-lg bg-white/90 dark:bg-black/50 border border-white/40 shadow-md transition-all duration-300;
   }
   
   /* List item animations */
